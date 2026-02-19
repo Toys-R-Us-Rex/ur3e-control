@@ -22,7 +22,7 @@ import numpy as np
 from numpy import sin, cos, arctan2, arccos, sqrt, pi
 
 # Reuse the teacher's data classes so return types are identical
-from URBasic.waypoint6d import Joint6D, TCP6D, Joint6DDescriptor
+from URBasic.waypoint6d import Joint6D, TCP6D, Joint6DDescriptor, TCP6DDescriptor
 
 # Container name (must match docker-compose)
 CONTAINER_NAME = "iscoin_simulator"
@@ -50,7 +50,7 @@ JOINT_NAMES = [
 UR3E_DH = [
     {"a": 0,        "d": 0.15185,  "alpha": math.pi / 2},   # joint 1
     {"a": -0.24355, "d": 0,        "alpha": 0},              # joint 2
-    {"a": -0.21325, "d": 0,        "alpha": 0},              # joint 3
+    {"a": -0.2132,  "d": 0,        "alpha": 0},              # joint 3
     {"a": 0,        "d": 0.13105,  "alpha": math.pi / 2},    # joint 4
     {"a": 0,        "d": 0.08535,  "alpha": -math.pi / 2},   # joint 5
     {"a": 0,        "d": 0.0921,   "alpha": 0},              # joint 6
@@ -370,13 +370,13 @@ def _analytical_ik(T_desired):
 
             # The position of frame 4 in frame 1 coordinates
             P14 = T14[:3, 3]
-            P14xz = sqrt(P14[0]**2 + P14[2]**2)  # projected distance
 
             # ── Solve θ3 (2 solutions) using law of cosines ──────────
-            # |a2|, |a3| are the link lengths
-            # D² = P14x² + P14z² (in the plane of joints 2,3)
-            # But P14y should be close to -d4 (check not strictly needed)
-            D_sq = P14[0]**2 + P14[2]**2
+            # The 2R arm (joints 2,3) operates in the x-y plane of frame 1.
+            # P14_x = a2*cos(θ2) + a3*cos(θ2+θ3)
+            # P14_y = a2*sin(θ2) + a3*sin(θ2+θ3)
+            # P14_z ≈ d4 (offset along z1)
+            D_sq = P14[0]**2 + P14[1]**2
             cos3_numer = D_sq - a2**2 - a3**2
             cos3_denom = 2 * a2 * a3
 
@@ -392,22 +392,17 @@ def _analytical_ik(T_desired):
 
             for theta3 in theta3_options:
                 # ── Solve θ2 ──────────────────────────────────────────
-                # Standard 2-link planar arm solution:
-                # P14x = a2*cos(θ2) + a3*cos(θ2+θ3)  => (a2 + a3*cos3)*cos2 - a3*sin3*sin2
-                # P14z = a2*sin(θ2) + a3*sin(θ2+θ3)  => (a2 + a3*cos3)*sin2 + a3*sin3*cos2
-                # But frame 1 has z pointing up for joint 2 rotation...
-                # For UR convention: use P14[0] and P14[2]
+                # Standard 2-link planar arm in x-y plane of frame 1:
+                # P14_x = (a2 + a3*c3)*c2 - a3*s3*s2
+                # P14_y = (a2 + a3*c3)*s2 + a3*s3*c2
                 s3 = sin(theta3)
                 A = a2 + a3 * cos3
                 B = a3 * s3
 
-                # θ2 = atan2(A*P14z - B*P14x, A*P14x + B*P14z)
-                # But we need to be careful about the UR DH convention.
-                # In frame 1, x points along link direction, z is up (rotation axis).
-                # For the planar sub-problem:
+                # θ2 = atan2(A*P14_y - B*P14_x, A*P14_x + B*P14_y)
                 theta2 = arctan2(
-                    A * P14[2] - B * P14[0],
-                    A * P14[0] + B * P14[2]
+                    A * P14[1] - B * P14[0],
+                    A * P14[0] + B * P14[1]
                 )
 
                 # ── Solve θ4 ──────────────────────────────────────────
@@ -645,6 +640,71 @@ class SimRobotControl:
 
         return self.movej(target_joints, t=duration, wait=wait)
 
+    def movel_waypoints(self, waypoints, wait=True):
+        """Move in a straight line through multiple TCP waypoints continuously.
+
+        Args:
+            waypoints: list of TCP6DDescriptor (from the teacher's library).
+            wait: if True, waits for all movements to finish.
+
+        Returns:
+            True if the final target was reached, False otherwise.
+        """
+        if not isinstance(waypoints, list):
+            raise ValueError("waypoints must be a list of TCP6DDescriptor objects")
+        for w in waypoints:
+            if not isinstance(w, TCP6DDescriptor):
+                raise ValueError(f"waypoints must be a list of TCP6DDescriptor objects — got {type(w)}")
+
+        # Build trajectory points with cumulative time
+        points = []
+        cumulative_sec = 0
+        prev_joints = self.get_actual_joint_positions()
+        prev_tcp = self.get_actual_tcp_pose()
+
+        for wp in waypoints:
+            wp_dict = wp.getAsDict()
+            pose = TCP6D.createFromMetersRadians(*wp_dict["pose"])
+            v = wp_dict["v"]
+            t_param = wp_dict["t"]
+
+            # Compute IK seeded from previous waypoint's joints
+            target_joints = self.get_inverse_kin(pose, qnear=prev_joints)
+            if target_joints is None:
+                print(f"ERROR: movel_waypoints — IK failed for {pose}")
+                return False
+
+            # Estimate duration
+            if t_param > 0:
+                duration = t_param
+            else:
+                dx = pose.x - prev_tcp.x
+                dy = pose.y - prev_tcp.y
+                dz = pose.z - prev_tcp.z
+                dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+                duration = max(2, int(math.ceil(dist / v)))
+
+            cumulative_sec += duration
+            points.append({
+                "positions": target_joints.toList(),
+                "duration_sec": cumulative_sec,
+            })
+
+            prev_joints = target_joints
+            prev_tcp = pose
+
+        # Send all points as a single trajectory
+        _publish_trajectory(points)
+        print(f"movel_waypoints sent ({len(points)} points, total={cumulative_sec}s)")
+
+        # Wait and verify final position
+        if wait:
+            time.sleep(cumulative_sec + 1)
+            final_target = Joint6D.createFromRadians(*points[-1]["positions"])
+            return self._verify_position(final_target)
+
+        return True
+
     def stopj(self, a=2.0, wait=True):
         """Stop the robot by sending the current position as target.
 
@@ -710,8 +770,18 @@ class SimRobotControl:
                     return Joint6D.createFromRadians(*best.tolist())
                 print(f"WARNING: Analytical IK best solution has position error={sqrt(err):.6f}m")
 
+        # Reachability diagnostic
+        pos = np.array([pose.x, pose.y, pose.z])
+        reach = np.linalg.norm(pos)
+        max_reach = abs(UR3E_DH[1]["a"]) + abs(UR3E_DH[2]["a"])  # ~0.457m
+        print(f"INFO: Analytical IK returned 0 valid solutions for target at "
+              f"distance={reach:.4f}m (max reach ~{max_reach:.3f}m)")
+        if reach > max_reach:
+            print(f"WARNING: Target is likely outside the UR3e workspace "
+                  f"({reach:.4f}m > {max_reach:.3f}m)")
+
         # Fallback: numerical optimization
-        print("INFO: Analytical IK found no valid solution, trying numerical fallback...")
+        print("INFO: Trying numerical IK fallback...")
         return self._numerical_ik(pose, q0)
 
     def _numerical_ik(self, pose, q0):

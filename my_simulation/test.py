@@ -43,31 +43,76 @@ print(f"Current TCP:    {tcp}")
 # print(f"Back home: {joints}")
 
 
+# ── Go to home position first ──────────────────────────────────────────
+print("\n=== MOVEJ: going to home position ===")
+home = Joint6D.createFromRadians(1.1945, -1.1268, 1.0484, -1.5988, -1.5214, 1.0469)
+iscoin.robot_control.movej(home, a=radians(80), v=radians(60))
+
 # ── Test movel ──────────────────────────────────────────────────────────
 print("\n=== MOVEL: reading current TCP pose ===")
 tcp_before = iscoin.robot_control.get_actual_tcp_pose()
 print(f"TCP before: {tcp_before}")
 
+length = 0.15
+
 # Move 5cm in the X direction from the current pose
-target_tcp = TCP6D.createFromMetersRadians(
-    tcp_before.x + 0.15,
-    tcp_before.y + 0.15,
-    tcp_before.z + 0.15,
+target_tcp_1 = TCP6D.createFromMetersRadians(
+    tcp_before.x + length,
+    tcp_before.y,
+    tcp_before.z,
     tcp_before.rx,
     tcp_before.ry,
     tcp_before.rz,
 )
-print(f"\n=== MOVEL: moving to {target_tcp} ===")
-iscoin.robot_control.movel(target_tcp, v=0.1)
+
+target_tcp_2 = TCP6D.createFromMetersRadians(
+    tcp_before.x + length,
+    tcp_before.y + length,
+    tcp_before.z,
+    tcp_before.rx,
+    tcp_before.ry,
+    tcp_before.rz,
+)
+
+target_tcp_3 = TCP6D.createFromMetersRadians(
+    tcp_before.x,
+    tcp_before.y + length,
+    tcp_before.z,
+    tcp_before.rx,
+    tcp_before.ry,
+    tcp_before.rz,
+)
+
+target_tcp_4 = TCP6D.createFromMetersRadians(
+    tcp_before.x,
+    tcp_before.y,
+    tcp_before.z,
+    tcp_before.rx,
+    tcp_before.ry,
+    tcp_before.rz,
+)
+
+
+print(f"\n=== MOVEL 1: moving to {target_tcp_1} ===")
+iscoin.robot_control.movel(target_tcp_1, v=0.1)
+
+print(f"\n=== MOVEL 2: moving to {target_tcp_2} ===")
+iscoin.robot_control.movel(target_tcp_2, v=0.1)
+
+print(f"\n=== MOVEL 3: moving to {target_tcp_3} ===")
+iscoin.robot_control.movel(target_tcp_3, v=0.1)
+
+print(f"\n=== MOVEL 4: moving to {target_tcp_4} ===")
+iscoin.robot_control.movel(target_tcp_4, v=0.1)
 
 tcp_after = iscoin.robot_control.get_actual_tcp_pose()
 print(f"TCP after movel: {tcp_after}")
 
-print(f"\n=== MOVEL: moving back ===")
-iscoin.robot_control.movel(tcp_before, v=0.1)
-
-tcp_final = iscoin.robot_control.get_actual_tcp_pose()
-print(f"TCP final: {tcp_final}")
+# print(f"\n=== MOVEL: moving back ===")
+# iscoin.robot_control.movel(tcp_before, v=0.1)
+#
+# tcp_final = iscoin.robot_control.get_actual_tcp_pose()
+# print(f"TCP final: {tcp_final}")
 
 
 # ── Done ────────────────────────────────────────────────────────────────
