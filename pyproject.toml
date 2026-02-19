@@ -7,7 +7,7 @@ authors = [
     { name = "RIU", email = "murielle.richard@hevs.ch" },
     { name = "AZL", email = "loic.azzalini@hevs.ch" },
 ]
-requires-python = ">=3.10,<4"
+requires-python = ">=3.10,<3.12"
 readme = "README.md"
 license = "MIT"
 classifiers = [
