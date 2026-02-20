@@ -1,0 +1,56 @@
+"""ISCoinSim — A drop-in replacement for ISCoin that talks to the Gazebo simulator.
+
+Usage:
+    from my_simulation import ISCoinSim
+
+    iscoin = ISCoinSim()
+    print(iscoin.robot_control.get_actual_joint_positions())
+    iscoin.robot_control.movej(Joint6D.createFromRadians(1.19, -1.13, 1.05, -1.60, -1.52, 1.05))
+"""
+
+import subprocess
+
+from . import ros_bridge
+from .robot_control import SimRobotControl
+from .gripper import SimGripper
+
+
+class ISCoinSim:
+    """Drop-in replacement for ISCoin that talks to the Gazebo simulator."""
+
+    def __init__(self, container_name="iscoin_simulator", opened_gripper_size_mm=50.0):
+        ros_bridge.CONTAINER_NAME = container_name
+
+        # Check that the container is running
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.Running}}", container_name],
+            capture_output=True,
+            text=True,
+        )
+        if "true" not in result.stdout:
+            raise ConnectionError(
+                f"Container '{container_name}' is not running. "
+                "Start the simulator first:\n"
+                "  cd ur3e-simulator/.docker && docker compose run --rm cpu\n"
+                "  ros2 launch iscoin_simulation_gz iscoin_sim_control.launch.py"
+            )
+
+        self._robot_control = SimRobotControl()
+        self._gripper = SimGripper(opened_size_mm=opened_gripper_size_mm)
+        print(f"ISCoinSim connected to container '{container_name}'")
+
+    @property
+    def robot_control(self):
+        return self._robot_control
+
+    @property
+    def gripper(self):
+        return self._gripper
+
+    @property
+    def camera(self):
+        print("WARNING: Camera is not available in the Gazebo simulator")
+        return None
+
+    def close(self):
+        print("ISCoinSim closed")

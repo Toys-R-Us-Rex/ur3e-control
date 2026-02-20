@@ -43,7 +43,7 @@ corner2 = TCP6D.createFromMetersRadians(
     tcp_before.z, tcp_before.rx, tcp_before.ry, tcp_before.rz,
 )
 corner3 = TCP6D.createFromMetersRadians(
-    tcp_before.x, tcp_before.y + length,
+    tcp_before.x, tcp_before.y + length,+-
     tcp_before.z, tcp_before.rx, tcp_before.ry, tcp_before.rz,
 )
 corner4 = TCP6D.createFromMetersRadians(
