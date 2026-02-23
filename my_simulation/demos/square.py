@@ -10,10 +10,14 @@ Prerequisites:
   3. You ran 'uv sync --python 3.11' in ur3e-control/
 
 Run from ur3e-control/:
-  PYTHONPATH=. uv run python my_simulation/square.py
+  uv run python my_simulation/demos/square.py
 """
 
-from my_simulation import ISCoinSim as ISCoin
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from my_simulation.iscoin_sim import ISCoinSim as ISCoin
 from URBasic import Joint6D, TCP6D
 from URBasic.waypoint6d import TCP6DDescriptor
 from math import radians
@@ -43,7 +47,7 @@ corner2 = TCP6D.createFromMetersRadians(
     tcp_before.z, tcp_before.rx, tcp_before.ry, tcp_before.rz,
 )
 corner3 = TCP6D.createFromMetersRadians(
-    tcp_before.x, tcp_before.y + length,+-
+    tcp_before.x, tcp_before.y + length,
     tcp_before.z, tcp_before.rx, tcp_before.ry, tcp_before.rz,
 )
 corner4 = TCP6D.createFromMetersRadians(
