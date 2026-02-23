@@ -7,8 +7,12 @@ Prerequisites:
   3. You ran 'uv sync --python 3.11' in ur3e-control/
 
 Run from ur3e-control/:
-  PYTHONPATH=. uv run python my_simulation/test.py
+  uv run python my_simulation/demos/test.py
 """
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from my_simulation import ISCoinSim as ISCoin
 # from URBasic import ISCoin  # <-- swap this line to use the real robot
