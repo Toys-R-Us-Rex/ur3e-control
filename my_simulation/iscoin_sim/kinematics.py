@@ -61,14 +61,14 @@ def dh_matrix(theta, a, d, alpha):
     ])
 
 
-def forward_kinematics(joint_angles):
-    """Compute the TCP pose from joint angles using UR3e DH parameters.
+def forward_kinematics_matrix(joint_angles):
+    """Compute the flange 4x4 homogeneous matrix from joint angles.
 
     Args:
         joint_angles: list of 6 joint angles in radians.
 
     Returns:
-        TCP6D with [x, y, z, rx, ry, rz] (position in meters, rotation as axis-angle).
+        4x4 numpy array (homogeneous transformation matrix).
     """
     T = np.eye(4)
 
@@ -92,10 +92,20 @@ def forward_kinematics(joint_angles):
 
         T = T @ Ti
 
-    # Extract position
+    return T
+
+
+def matrix_to_tcp6d(T):
+    """Convert a 4x4 homogeneous matrix to TCP6D (position + axis-angle).
+
+    Args:
+        T: 4x4 numpy array (homogeneous transformation matrix).
+
+    Returns:
+        TCP6D with [x, y, z, rx, ry, rz].
+    """
     x, y, z = T[0, 3], T[1, 3], T[2, 3]
 
-    # Extract rotation matrix and convert to axis-angle
     R = T[:3, :3]
     angle = math.acos(max(-1, min(1, (np.trace(R) - 1) / 2)))
 
@@ -112,6 +122,18 @@ def forward_kinematics(joint_angles):
         rz = k * (R[1, 0] - R[0, 1])
 
     return TCP6D.createFromMetersRadians(x, y, z, rx, ry, rz)
+
+
+def forward_kinematics(joint_angles):
+    """Compute the TCP pose from joint angles using UR3e DH parameters.
+
+    Args:
+        joint_angles: list of 6 joint angles in radians.
+
+    Returns:
+        TCP6D with [x, y, z, rx, ry, rz] (position in meters, rotation as axis-angle).
+    """
+    return matrix_to_tcp6d(forward_kinematics_matrix(joint_angles))
 
 
 def pose_to_matrix(pose):
