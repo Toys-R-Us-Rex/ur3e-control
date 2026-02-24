@@ -35,7 +35,7 @@ from URBasic.manipulation import *
 
 pi = np.pi
 # Disable the logging stream from ikpy
-ik.logs.manager.removeHandler(ik.logs.stream_handler)
+#ik.logs.manager.removeHandler(ik.logs.stream_handler)
 
 def Forwardkin_manip(joints,rob='ur10'):    
     '''
@@ -158,20 +158,21 @@ def Robot_parameter_screw_axes(rob='ur10'):
         S2_ur5 = [0,-1,0,.089159,0,0]
         S3_ur5 = [0,-1,0,.089159,0,.425]
         S4_ur5 = [0,-1,0,.089159,0,.81725]
-        S5_ur5 = [0,0,-1,.10915,-.81725,0]  
+        S5_ur5 = [0,0,-1,.10915,-.81725,0]
         S6_ur5 = [0,-1,0,-.0055,0,.81725]
         Slist_ur5 = [S1_ur5,S2_ur5,S3_ur5,S4_ur5,S5_ur5,S6_ur5]
-        return M_ur5,Slist_ur5
-    elif str(rob).lower()=='ur10':
+        return M_ur5, Slist_ur5
+
+    elif str(rob).lower() == 'ur10':
         M_ur10 = [[1,0,0,-1.1843],[0,0,-1,-0.2561],[0,1,0,0.0116],[0,0,0,1]]
         S1_ur10 = [0,0,1,0,0,0]
         S2_ur10 = [0,-1,0,.1273,0,0]
         S3_ur10 = [0,-1,0,.1273,0,.612]
         S4_ur10 = [0,-1,0,.1273,0,1.1843]
-        S5_ur10 = [0,0,-1,.16394,-1.1843,0]  
+        S5_ur10 = [0,0,-1,.16394,-1.1843,0]
         S6_ur10 = [0,-1,0,0.01165,0,1.1843]
         Slist_ur10 = [S1_ur10,S2_ur10,S3_ur10,S4_ur10,S5_ur10,S6_ur10]
-        return M_ur10,Slist_ur10
+        return M_ur10, Slist_ur10
     else:
         print('Wrong robot selected')
         return False
