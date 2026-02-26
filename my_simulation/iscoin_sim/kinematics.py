@@ -48,6 +48,11 @@ UR3E_DH = [
     {"a": 0,        "d": 0.0921,   "alpha": 0},              # joint 6
 ]
 
+def _clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
+
+def _safe_sqrt_nonneg(x: float) -> float:
+    return math.sqrt(max(0.0, x))
 
 def dh_matrix(theta, a, d, alpha):
     """Build a single standard DH transformation matrix."""
@@ -107,14 +112,16 @@ def matrix_to_tcp6d(T):
     x, y, z = T[0, 3], T[1, 3], T[2, 3]
 
     R = T[:3, :3]
-    angle = math.acos(max(-1, min(1, (np.trace(R) - 1) / 2)))
+    trace_R = R[0, 0] + R[1, 1] + R[2, 2]
+    cos_angle = _clamp((trace_R - 1.0) / 2.0, -1.0, 1.0)
+    angle = math.acos(cos_angle)
 
     if abs(angle) < 1e-6:
         rx, ry, rz = 0.0, 0.0, 0.0
     elif abs(angle - math.pi) < 1e-6:
-        rx = math.pi * math.sqrt((R[0, 0] + 1) / 2)
-        ry = math.pi * math.sqrt((R[1, 1] + 1) / 2)
-        rz = math.pi * math.sqrt((R[2, 2] + 1) / 2)
+        rx = math.pi * _safe_sqrt_nonneg((R[0, 0] + 1.0) / 2.0)
+        ry = math.pi * _safe_sqrt_nonneg((R[1, 1] + 1.0) / 2.0)
+        rz = math.pi * _safe_sqrt_nonneg((R[2, 2] + 1.0) / 2.0)
     else:
         k = angle / (2 * math.sin(angle))
         rx = k * (R[2, 1] - R[1, 2])

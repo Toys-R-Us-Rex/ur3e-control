@@ -43,3 +43,4 @@ from .urScriptExt import UrScriptExt
 from .devices import *
 from .waypoint6d import *
 from .iscoin import ISCoin
+from .reachability import is_reachable

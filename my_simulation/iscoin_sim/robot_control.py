@@ -33,8 +33,10 @@ URBasic:    API modelled on UrScriptExt by Martin Huus Bjerge,
 import math
 import time
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 from URBasic.waypoint6d import Joint6D, TCP6D, TCP6DDescriptor
+from URBasic.reachability import is_reachable as urbasic_is_reachable
 
 from .ros_bridge import read_joint_states, extract_6joints, publish_trajectory, estimate_duration
 from .kinematics import (
@@ -292,6 +294,9 @@ class SimRobotControl:
         Returns:
             Joint6D with the solution, or None if no solution found.
         """
+        if not isinstance(pose, TCP6D):
+            raise ValueError(f"pose must be TCP6D - got {type(pose)}")
+
         if qnear is not None:
             q0 = np.array(qnear.toList())
         else:
@@ -332,6 +337,10 @@ class SimRobotControl:
                   f"({reach:.4f}m > {max_reach:.3f}m)")
 
         return None
+
+    def is_reachable(self, point, normal, obstacles=None, **kwargs):
+        """Simulation wrapper around URBasic reachability helper."""
+        return urbasic_is_reachable(self, point, normal, obstacles, **kwargs)
 
     # -- Internal helpers ----------------------------------------------------
 
