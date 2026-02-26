@@ -27,6 +27,8 @@ dependencies = [
     "opencv-python>=4.11.0.86,<5",
     "setuptools==59.6.0",
     "urbasic",
+    "trimesh>=4.11.2",
+    "rtree>=1.4.1",
 ]
 
 [tool.uv]
