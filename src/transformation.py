@@ -13,8 +13,6 @@ def collect_data(robot_arm: UrScript, world_measure):
     
     tcps = []
 
-    robot_arm.set_tcp(TCP6D.createFromMetersRadians(0,0,0,0,0,0))
-
     k = 0
     while k < num_measure:
         robot_arm.freedrive_mode()
