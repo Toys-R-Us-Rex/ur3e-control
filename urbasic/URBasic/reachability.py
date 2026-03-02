@@ -141,9 +141,18 @@ def _orientation_from_normal(normal: np.ndarray, roll_hint_rotvec: np.ndarray | 
         if np.linalg.norm(x_proj) > 1e-9:
             x_axis = _unit(x_proj)
         else:
-            x_axis = np.array([1.0, 0.0, 0.0], dtype=float)
+            ref = np.array([1.0, 0.0, 0.0], dtype=float)
+            if abs(float(np.dot(ref, z_axis))) > 0.95:
+                ref = np.array([0.0, 1.0, 0.0], dtype=float)
+            x_axis = _unit(np.cross(ref, z_axis))
     else:
         ref = np.array([0.0, 0.0, 1.0], dtype=float)
+        if abs(float(np.dot(ref, z_axis))) > 0.95:
+            ref = np.array([1.0, 0.0, 0.0], dtype=float)
+        x_axis = _unit(np.cross(ref, z_axis))
+
+    if np.linalg.norm(np.cross(z_axis, x_axis)) <= 1e-12:
+        ref = np.array([0.0, 1.0, 0.0], dtype=float)
         if abs(float(np.dot(ref, z_axis))) > 0.95:
             ref = np.array([1.0, 0.0, 0.0], dtype=float)
         x_axis = _unit(np.cross(ref, z_axis))
@@ -153,23 +162,62 @@ def _orientation_from_normal(normal: np.ndarray, roll_hint_rotvec: np.ndarray | 
     return np.column_stack((x_axis, y_axis, z_axis))
 
 
+def _within_joint_limits(joints: np.ndarray, joint_limits: Sequence[tuple[float, float]]) -> bool:
+    if len(joint_limits) != 6:
+        raise ValueError("joint_limits must contain 6 (min, max) pairs")
+
+    for i, limits in enumerate(joint_limits):
+        if len(limits) != 2:
+            raise ValueError("each joint limit must be a (min, max) pair")
+        lo = float(limits[0])
+        hi = float(limits[1])
+        if lo > hi:
+            raise ValueError("joint limit min must be <= max")
+        qi = float(joints[i])
+        if qi < lo or qi > hi:
+            return False
+
+    return True
+
+
 def _target_pose(point: np.ndarray, normal: np.ndarray, roll_hint_rotvec: np.ndarray | None) -> TCP6D:
     R = _orientation_from_normal(normal, roll_hint_rotvec)
     rx, ry, rz = Rotation.from_matrix(R).as_rotvec()
     return TCP6D.createFromMetersRadians(point[0], point[1], point[2], float(rx), float(ry), float(rz))
 
 
+def _target_pose_with_roll(
+    point: np.ndarray,
+    normal: np.ndarray,
+    roll_hint_rotvec: np.ndarray | None,
+    roll_angle: float,
+) -> TCP6D:
+    R_base = _orientation_from_normal(normal, roll_hint_rotvec)
+    if abs(float(roll_angle)) > 1e-12:
+        R_roll = Rotation.from_rotvec(np.array([0.0, 0.0, float(roll_angle)], dtype=float)).as_matrix()
+        R = R_base @ R_roll
+    else:
+        R = R_base
+
+    rx, ry, rz = Rotation.from_matrix(R).as_rotvec()
+    return TCP6D.createFromMetersRadians(point[0], point[1], point[2], float(rx), float(ry), float(rz))
+
+
 def is_reachable(
     robot_control,
-    point: Sequence[float],
-    normal: Sequence[float],
+    tcp6d: Sequence[float] | TCP6D,
     obstacles: Sequence[dict] | None = None,
     *,
     clearance: float = 0.005,
     link_radii: Sequence[float] = DEFAULT_LINK_RADII,
     interpolation_steps: int = 14,
+    joint_limits: Sequence[tuple[float, float]] | None = None,
+    roll_samples: int = 12,
+    include_opposite_normal: bool = True,
+    current_joints: Joint6D | Sequence[float] | None = None,
+    current_tcp: TCP6D | Sequence[float] | None = None,
 ) -> bool:
-    """Return True if a point is reachable with the provided surface normal.
+    """Return True if a point is reachable for at least one sampled tool roll.
 
     This function is TCP-aware because it relies on URBasic's
     get_inverse_kin() with the robot's currently configured TCP (set_tcp).
@@ -179,8 +227,7 @@ def is_reachable(
     Args:
         robot_control: URBasic control object with get_actual_joint_positions,
             get_actual_tcp_pose, get_inverse_kin.
-        point: Target point [x, y, z] in meters (base frame).
-        normal: Surface normal [nx, ny, nz] in base frame.
+        tcp6d: Target [x, y, z, nx, ny, nz], where n is the surface normal.
         obstacles: Optional list of obstacle dicts.
             Sphere: {"type": "sphere", "center": [x, y, z], "radius": r}
             Box: {"type": "box", "min": [x, y, z], "max": [x, y, z]}
@@ -188,58 +235,89 @@ def is_reachable(
         clearance: Extra collision margin in meters.
         link_radii: Approximate collision radii for the 6 arm links.
         interpolation_steps: Number of checks between current and target joints.
+        joint_limits: Optional joint rotation limits in radians as
+            [(j1_min, j1_max), ..., (j6_min, j6_max)].
+        roll_samples: Number of roll angles sampled in [0, 2π), minimum 1.
+        include_opposite_normal: If True, also test approach axis -normal.
+        current_joints: Optional cached current joint state.
+            If omitted, read from robot_control.
+        current_tcp: Optional cached current TCP pose.
+            If omitted, read from robot_control.
 
     Returns:
-        True if at least one orientation convention along the normal is
+        True if at least one sampled orientation around the normal is
         reachable and collision-free, otherwise False.
     """
     if len(link_radii) != 6:
         raise ValueError("link_radii must contain 6 values")
     if interpolation_steps < 1:
         raise ValueError("interpolation_steps must be >= 1")
+    if roll_samples < 1:
+        raise ValueError("roll_samples must be >= 1")
 
-    p = _as_vec3(point, "point")
-    n = _unit(_as_vec3(normal, "normal"))
+    p = _as_vec3(tcp6d[0:3], "point")
+    n = _unit(_as_vec3(tcp6d[3:6], "normal"))
     obstacles = list(obstacles) if obstacles is not None else []
 
-    current_joints = robot_control.get_actual_joint_positions(wait=True)
-    current_tcp = robot_control.get_actual_tcp_pose(wait=True)
-    roll_hint = np.array([current_tcp.rx, current_tcp.ry, current_tcp.rz], dtype=float)
+    if current_joints is None:
+        current_joints_obj = robot_control.get_actual_joint_positions(wait=True)
+    elif isinstance(current_joints, Joint6D):
+        current_joints_obj = current_joints
+    else:
+        current_joints_obj = Joint6D.createFromRadians(*[float(q) for q in current_joints])
 
-    normal_candidates = (n, -n)
-    q_start = np.array(current_joints.toList(), dtype=float)
+    if current_tcp is None:
+        current_tcp_obj = robot_control.get_actual_tcp_pose(wait=True)
+    elif isinstance(current_tcp, TCP6D):
+        current_tcp_obj = current_tcp
+    else:
+        current_tcp_obj = TCP6D.createFromMetersRadians(*[float(v) for v in current_tcp])
+
+    roll_hint = np.array([current_tcp_obj.rx, current_tcp_obj.ry, current_tcp_obj.rz], dtype=float)
+
+    if roll_samples == 1:
+        roll_angles = (0.0,)
+    else:
+        roll_angles = tuple(2.0 * math.pi * k / float(roll_samples) for k in range(roll_samples))
+
+    normal_candidates = (n, -n) if include_opposite_normal else (n,)
+    q_start = np.array(current_joints_obj.toList(), dtype=float)
 
     for candidate_normal in normal_candidates:
-        target_tcp = _target_pose(p, candidate_normal, roll_hint)
+        for roll_angle in roll_angles:
+            target_tcp = _target_pose_with_roll(p, candidate_normal, roll_hint, roll_angle)
 
-        try:
-            q_target_obj = robot_control.get_inverse_kin(target_tcp, qnear=current_joints)
-        except TypeError:
-            q_target_obj = robot_control.get_inverse_kin(target_tcp)
-        except Exception:
-            continue
+            try:
+                q_target_obj = robot_control.get_inverse_kin(target_tcp, qnear=current_joints_obj)
+            except TypeError:
+                q_target_obj = robot_control.get_inverse_kin(target_tcp)
+            except Exception:
+                continue
 
-        if q_target_obj is None:
-            continue
+            if q_target_obj is None:
+                continue
 
-        if isinstance(q_target_obj, Joint6D):
-            q_goal = np.array(q_target_obj.toList(), dtype=float)
-        else:
-            q_goal = np.array(q_target_obj, dtype=float)
+            if isinstance(q_target_obj, Joint6D):
+                q_goal = np.array(q_target_obj.toList(), dtype=float)
+            else:
+                q_goal = np.array(q_target_obj, dtype=float)
 
-        if q_goal.shape != (6,):
-            continue
+            if q_goal.shape != (6,):
+                continue
 
-        collision_found = False
-        if obstacles:
-            for step in range(interpolation_steps + 1):
-                t = step / float(interpolation_steps)
-                q_interp = q_start + t * (q_goal - q_start)
-                if _configuration_in_collision(q_interp, obstacles, link_radii, clearance):
-                    collision_found = True
-                    break
+            if joint_limits is not None and not _within_joint_limits(q_goal, joint_limits):
+                continue
 
-        if not collision_found:
-            return True
+            collision_found = False
+            if obstacles:
+                for step in range(interpolation_steps + 1):
+                    t = step / float(interpolation_steps)
+                    q_interp = q_start + t * (q_goal - q_start)
+                    if _configuration_in_collision(q_interp, obstacles, link_radii, clearance):
+                        collision_found = True
+                        break
+
+            if not collision_found:
+                return True
 
     return False
