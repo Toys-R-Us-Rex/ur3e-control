@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from my_simulation import ISCoinSim as ISCoin
+from duckify_simulation import DuckifySim as ISCoin
 # from URBasic import ISCoin  # <-- swap this line to use the real robot
 
 from URBasic import Joint6D, TCP6D

@@ -2,3 +2,4 @@ __pycache__/
 ur_log/
 *venv/
 *.egg-info/
+*vscode/
