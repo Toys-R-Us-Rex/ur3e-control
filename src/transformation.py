@@ -86,3 +86,39 @@ def create_transformation(A, B):
 
     return AtoB
 
+def _rotvec_to_rotmat(r):
+    theta = np.linalg.norm(r)
+    if theta < 1e-12:
+        return np.eye(3)
+    k = r / theta
+    K = np.array([[0, -k[2], k[1]],
+                  [k[2], 0, -k[0]],
+                  [-k[1], k[0], 0]])
+    return np.eye(3) + np.sin(theta)*K + (1-np.cos(theta))*(K @ K)
+
+def _rotmat_to_rotvec(R):
+    theta = np.arccos((np.trace(R) - 1) / 2)
+    if theta < 1e-12:
+        return np.zeros(3)
+    rx = (R[2,1] - R[1,2]) / (2*np.sin(theta))
+    ry = (R[0,2] - R[2,0]) / (2*np.sin(theta))
+    rz = (R[1,0] - R[0,1]) / (2*np.sin(theta))
+    return theta * np.array([rx, ry, rz])
+
+def tcp_trans(tcp1, tcp2):
+    # Décomposition
+    p1 = np.array(tcp1[:3])
+    r1 = np.array(tcp1[3:])
+    p2 = np.array(tcp2[:3])
+    r2 = np.array(tcp2[3:])
+
+    # Matrices de rotation
+    R1 = _rotvec_to_rotmat(r1)
+    R2 = _rotvec_to_rotmat(r2)
+
+    # Composition
+    p_new = p1 + R1 @ p2
+    R_new = R1 @ R2
+    r_new = _rotmat_to_rotvec(R_new)
+
+    return np.concatenate([p_new, r_new])
