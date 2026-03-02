@@ -1,9 +1,9 @@
-"""ISCoinSim — A drop-in replacement for ISCoin that talks to the Gazebo simulator.
+"""DuckifySim — A drop-in replacement for ISCoin that talks to the Gazebo simulator.
 
 Usage:
-    from my_simulation import ISCoinSim
+    from my_simulation import DuckifySim
 
-    iscoin = ISCoinSim()
+    iscoin = DuckifySim()
     print(iscoin.robot_control.get_actual_joint_positions())
     iscoin.robot_control.movej(Joint6D.createFromRadians(1.19, -1.13, 1.05, -1.60, -1.52, 1.05))
 
@@ -42,7 +42,7 @@ from .robot_control import SimRobotControl
 from .gripper import SimGripper
 
 
-class ISCoinSim:
+class DuckifySim:
     """Drop-in replacement for ISCoin that talks to the Gazebo simulator."""
 
     def __init__(self, container_name="iscoin_simulator", opened_gripper_size_mm=50.0):
@@ -64,7 +64,7 @@ class ISCoinSim:
 
         self._robot_control = SimRobotControl()
         self._gripper = SimGripper(opened_size_mm=opened_gripper_size_mm)
-        print(f"ISCoinSim connected to container '{container_name}'")
+        print(f"DuckifySim connected to container '{container_name}'")
 
     @property
     def robot_control(self):
@@ -80,4 +80,4 @@ class ISCoinSim:
         return None
 
     def close(self):
-        print("ISCoinSim closed")
+        print("DuckifySim closed")

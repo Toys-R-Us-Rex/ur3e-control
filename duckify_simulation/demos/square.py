@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from my_simulation.iscoin_sim import ISCoinSim as ISCoin
+from duckify_simulation.duckify_sim import DuckifySim as ISCoin
 from URBasic import Joint6D, TCP6D
 from URBasic.waypoint6d import TCP6DDescriptor
 from math import radians

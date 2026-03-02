@@ -56,7 +56,7 @@ class SimGripper:
     """Simulated Robotiq HandE gripper that controls the Gazebo model.
 
     Provides the same public API as RobotiqTwoFingersGripper so user code
-    works unchanged when switching between ISCoin and ISCoinSim.
+    works unchanged when switching between ISCoin and DuckifySim.
     """
 
     def __init__(self, opened_size_mm=50.0):
