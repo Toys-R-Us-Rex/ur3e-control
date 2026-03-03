@@ -23,7 +23,7 @@ def divide_path(tcp1, tcp2):
 
 # -- Public function --
 
-def move_safe_position(A, B, obstacles):
+def compute_safe_waypoints(A, B, obstacles):
     """Find waypoints [A, ..., B] that go around all obstacles."""
     waypoints = [A, B]
 
