@@ -52,18 +52,25 @@ def create_transformation(A, B):
     assert A.shape == B.shape
     N = A.shape[0]
 
-    # Build homogeneous source matrix
+    # Build matrix for affine solve: [A | 1]
     P = np.hstack([A, np.ones((N, 1))])  # Nx4
 
-    # Solve P @ T = B  → T is 4×3
-    T, _, _, _ = np.linalg.lstsq(P, B, rcond=None)
+    # Solve P @ X = B, where X is 4×3 (R^T and t)
+    X, _, _, _ = np.linalg.lstsq(P, B, rcond=None)
 
-    # Extract affine components
-    R = T[:3, :].T      # 3×3 linear part
-    t = T[3, :]         # 3-vector translation
+    # Extract R and t
+    R = X[:3, :].T   # 3×3
+    t = X[3, :]      # 3
 
-    # Precompute normal transform
+    # Build full 4×4 affine matrix
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = t
+
+    # Normal transform
     R_normal = np.linalg.inv(R).T
+    T_normal = np.eye(4)
+    T_normal[:3, :3] = R_normal
 
     def AtoB(p):
         p = np.asarray(p)
@@ -71,18 +78,18 @@ def create_transformation(A, B):
         normal = p[3:]
 
         # Transform point
-        p_new = R @ point + t
+        p_new = T @ [*point, 1]
 
         # Transform normal
-        n_new = R_normal @ normal
+        nx,ny,nz = normal
+        n_new = T_normal @ [nx,ny,nz, 1]
         n_new /= np.linalg.norm(n_new)
+        r_new = _normal_to_rxyz(n_new[:3])
 
-        # Convert to your rxyz representation
-        r_new = _normal_to_rxyz(n_new)
-
-        return (*p_new, *r_new)
+        return [*p_new[:3], *r_new]
 
     return AtoB
+
 
 def _rotvec_to_rotmat(r):
     theta = np.linalg.norm(r)
