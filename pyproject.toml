@@ -30,6 +30,8 @@ dependencies = [
     "trimesh>=4.0,<5",
     "rtree>=1.0,<2",
     "urbasic",
+    "trimesh>=4.11.2",
+    "rtree>=1.4.1",
 ]
 
 [tool.uv]
