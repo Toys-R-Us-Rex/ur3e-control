@@ -38,13 +38,31 @@ def collect_data(robot_arm: UrScript, world_measure):
 
     return np.array(tcps)
 
+def _normalize(v):
+    v = np.asarray(v, dtype=float)
+    n = np.linalg.norm(v)
+    return v / n if n > 0 else v
+
 def _normal_to_rxyz(n):
-    x,y,z = n
-    z = -z
-    rx = np.arctan2(-y, np.sqrt(x**2 + z**2))
-    ry = np.arctan2(x, z)
-    rz = 0
-    return [rx,ry,rz]
+    x, y, z = _normalize(n)
+
+    # cas dégénéré : déjà aligné avec +Z ou -Z
+    if np.isclose(x, 0) and np.isclose(y, 0):
+        # +Z -> pas de rotation, -Z -> rotation de pi autour de X (par ex.)
+        print("XY close 0",x,y,z)
+        if z > 0:
+            return np.array([0.0, 0.0, 0.0])
+        else:
+            return np.array([np.pi, 0.0, 0.0])
+
+    theta = np.arccos(z)
+    r = np.sqrt(x*x + y*y)
+
+    rx = -theta * (y / r)
+    ry =  theta * (x / r)
+    rz = 0.0
+
+    return np.array([rx, ry, rz])
 
 def create_transformation(A, B):
     A = np.asarray(A)[:, :3]
@@ -76,17 +94,15 @@ def create_transformation(A, B):
         p = np.asarray(p)
         point = p[:3]
         normal = p[3:]
-
         # Transform point
         p_new = T @ [*point, 1]
 
         # Transform normal
         nx,ny,nz = normal
-        n_new = T_normal @ [nx,ny,nz, 1]
-        n_new /= np.linalg.norm(n_new)
+        n_new = T_normal @ [-nx,-ny,-nz, 1]
         r_new = _normal_to_rxyz(n_new[:3])
 
-        return [*p_new[:3], *r_new]
+        return [*p_new[:3], *r_new[:3]]
 
     return AtoB
 
