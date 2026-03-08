@@ -137,8 +137,8 @@ def get_tcp_offset(tcps):
     Rs = [T[:3, :3] for T in Ts]
     ps = [T[:3, 3] for T in Ts]
 
-    # Your calibrated TCP in flange frame
-    t = np.array([-0.00072928, -0.00040785, 0.07966732])
+    # Old calibrated TCP for data validation purpose
+    t = np.array([1.30905845e-04, 3.33683034e-04, 2.45280738e-01])
 
     # Compute estimated TCP position in base for each measurement
     c_est = [ps[i] + Rs[i] @ t for i in range(len(ps))]
