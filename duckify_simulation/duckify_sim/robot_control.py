@@ -52,6 +52,7 @@ class SimRobotControl:
 
     def __init__(self):
         self._tcp_offset = np.eye(4)  # no tool by default (identity)
+        self._model_correction = np.eye(4)
 
     def set_tcp(self, pose):
         """Set the Tool Center Point offset (e.g. for a pen in the gripper).
@@ -61,6 +62,19 @@ class SimRobotControl:
                   For a pen of length L along Z: TCP6D.createFromMetersRadians(0, 0, L, 0, 0, 0)
         """
         self._tcp_offset = pose_to_matrix(pose)
+
+    def set_model_correction(self, pose):
+        """Correction for FK model inaccuracy (nominal DH vs real robot).
+
+        Applied between FK flange and TCP offset:
+            T_tcp = FK(joints) @ _model_correction @ _tcp_offset
+
+        Note: a constant correction is only accurate near the calibration pose.
+
+        Args:
+            pose: TCP6D correction (typically a Z translation).
+        """
+        self._model_correction = pose_to_matrix(pose)
 
     # -- Read state ----------------------------------------------------------
 
@@ -82,7 +96,20 @@ class SimRobotControl:
         """
         joints = self.get_actual_joint_positions(wait=wait)
         T_flange = forward_kinematics_matrix(joints.toList())
-        T_tcp = T_flange @ self._tcp_offset
+        T_tcp = T_flange @ self._model_correction @ self._tcp_offset
+        return matrix_to_tcp6d(T_tcp)
+
+    def get_fk(self, joints):
+        """Compute the TCP pose for the given joint configuration.
+
+        Args:
+            joints: Joint6D with joint angles in radians.
+
+        Returns:
+            TCP6D with [x, y, z, rx, ry, rz] (includes tool offset if set).
+        """
+        T_flange = forward_kinematics_matrix(joints.toList())
+        T_tcp = T_flange @ self._model_correction @ self._tcp_offset
         return matrix_to_tcp6d(T_tcp)
 
     def is_steady(self):
@@ -298,7 +325,7 @@ class SimRobotControl:
             q0 = np.array(self.get_actual_joint_positions().toList())
 
         T_desired = pose_to_matrix(pose)
-        T_flange = T_desired @ np.linalg.inv(self._tcp_offset)
+        T_flange = T_desired @ np.linalg.inv(self._model_correction @ self._tcp_offset)
         solutions = analytical_ik(T_flange)
 
         if solutions:
@@ -306,7 +333,7 @@ class SimRobotControl:
             valid = []
             target = np.array(pose.toList())
             for sol in solutions:
-                T_check = forward_kinematics_matrix(sol.tolist()) @ self._tcp_offset
+                T_check = forward_kinematics_matrix(sol.tolist()) @ self._model_correction @ self._tcp_offset
                 tcp_check = matrix_to_tcp6d(T_check)
                 err_pos = np.sum((np.array(tcp_check.toList()[:3]) - target[:3]) ** 2)
                 if err_pos < 0.001:
@@ -314,7 +341,7 @@ class SimRobotControl:
 
             best = select_closest_ik(valid if valid else solutions, q0)
             if best is not None:
-                T_check = forward_kinematics_matrix(best.tolist()) @ self._tcp_offset
+                T_check = forward_kinematics_matrix(best.tolist()) @ self._model_correction @ self._tcp_offset
                 tcp_check = matrix_to_tcp6d(T_check)
                 err = np.sum((np.array(tcp_check.toList()[:3]) - np.array(pose.toList()[:3])) ** 2)
                 if err < 0.001:
@@ -332,6 +359,34 @@ class SimRobotControl:
                   f"({reach:.4f}m > {max_reach:.3f}m)")
 
         return None
+
+    def get_all_ik_solutions(self, pose):
+        """Return all valid IK solutions for a TCP6D pose.
+
+        Solutions are sorted by joint-space distance to the current
+        robot configuration (closest first). All angles are wrapped to [-π, π].
+
+        Returns:
+            List of Joint6D solutions (empty if none found).
+        """
+        T_desired = pose_to_matrix(pose)
+        T_flange = T_desired @ np.linalg.inv(self._model_correction @ self._tcp_offset)
+        solutions = analytical_ik(T_flange)
+
+        valid = []
+        target = np.array(pose.toList())
+        for sol in solutions:
+            T_check = forward_kinematics_matrix(sol.tolist()) @ self._model_correction @ self._tcp_offset
+            tcp_check = matrix_to_tcp6d(T_check)
+            err_pos = np.sum((np.array(tcp_check.toList()[:3]) - target[:3]) ** 2)
+            if err_pos < 0.001:
+                valid.append(Joint6D.createFromRadians(*sol.tolist()))
+
+        # Sort by distance to current configuration
+        q_current = np.array(self.get_actual_joint_positions().toList())
+        valid.sort(key=lambda j: np.sum((np.array(j.toList()) - q_current) ** 2))
+
+        return valid
 
     # -- Internal helpers ----------------------------------------------------
 

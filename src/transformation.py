@@ -1,10 +1,8 @@
 import numpy as np
 
-from URBasic import TCP6D
-from URBasic import UrScript
 
-
-def collect_data(robot_arm: UrScript, world_measure):
+def collect_data(robot_arm, world_measure):
+    from URBasic import TCP6D, UrScript
     if len(world_measure) < 3:
         print("Minimum 3 measure points.")
         raise ValueError("You don't provide eanough world measure")
@@ -44,25 +42,21 @@ def _normalize(v):
     return v / n if n > 0 else v
 
 def _normal_to_rxyz(n):
-    x, y, z = _normalize(n)
-
-    # cas dégénéré : déjà aligné avec +Z ou -Z
-    if np.isclose(x, 0) and np.isclose(y, 0):
-        # +Z -> pas de rotation, -Z -> rotation de pi autour de X (par ex.)
-        print("XY close 0",x,y,z)
-        if z > 0:
-            return np.array([0.0, 0.0, 0.0])
+    n = np.asarray(n, dtype=float)
+    target = -n  # pen faces into surface
+    z_axis = np.array([0.0, 0.0, 1.0])
+    cross = np.cross(z_axis, target)
+    sin_angle = np.linalg.norm(cross)
+    cos_angle = np.dot(z_axis, target)
+    if sin_angle < 1e-12:
+        if cos_angle > 0:
+            return [0.0, 0.0, 0.0]       # target already [0,0,1]
         else:
-            return np.array([np.pi, 0.0, 0.0])
-
-    theta = np.arccos(z)
-    r = np.sqrt(x*x + y*y)
-
-    rx = -theta * (y / r)
-    ry =  theta * (x / r)
-    rz = 0.0
-
-    return np.array([rx, ry, rz])
+            return [0.0, np.pi, 0.0]     # 180° flip around Y
+    axis = cross / sin_angle
+    angle = np.arctan2(sin_angle, cos_angle)
+    rotvec = axis * angle
+    return rotvec
 
 def create_transformation(A, B):
     A = np.asarray(A)[:, :3]
@@ -85,7 +79,7 @@ def create_transformation(A, B):
     T[:3, :3] = R
     T[:3, 3] = t
 
-    # Normal transform
+    # Normal transform (4×4 homogeneous)
     R_normal = np.linalg.inv(R).T
     T_normal = np.eye(4)
     T_normal[:3, :3] = R_normal
@@ -97,12 +91,17 @@ def create_transformation(A, B):
         # Transform point
         p_new = T @ [*point, 1]
 
-        # Transform normal
+        # Transform normal (4×4 homogeneous, extract xyz before normalizing)
         nx,ny,nz = normal
-        n_new = T_normal @ [-nx,-ny,-nz, 1]
-        r_new = _normal_to_rxyz(n_new[:3])
+        n_new = (T_normal @ [nx,ny,nz, 1])[:3]
+        n_new /= np.linalg.norm(n_new)
+        r_new = _normal_to_rxyz(n_new)
 
-        return [*p_new[:3], *r_new[:3]]
+        return [*p_new[:3], *r_new]
+
+    # Expose 4×4 matrices as attributes for inspection/composition
+    AtoB.T = T
+    AtoB.T_normal = T_normal
 
     return AtoB
 
