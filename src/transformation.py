@@ -1,10 +1,8 @@
 import numpy as np
 
-from URBasic import TCP6D
-from URBasic import UrScript
 
-
-def collect_data(robot_arm: UrScript, world_measure):
+def collect_data(robot_arm, world_measure):
+    from URBasic import TCP6D, UrScript
     if len(world_measure) < 3:
         print("Minimum 3 measure points.")
         raise ValueError("You don't provide eanough world measure")
@@ -39,12 +37,31 @@ def collect_data(robot_arm: UrScript, world_measure):
     return np.array(tcps)
 
 def _normal_to_rxyz(n):
-    x,y,z = n
-    z = -z
-    rx = np.arctan2(-y, np.sqrt(x**2 + z**2))
-    ry = np.arctan2(x, z)
-    rz = 0
-    return [rx,ry,rz]
+    n = np.asarray(n, dtype=float)
+    target = -n  # pen faces into surface
+    z_axis = np.array([0.0, 0.0, 1.0])
+    cross = np.cross(z_axis, target)
+    sin_angle = np.linalg.norm(cross)
+    cos_angle = np.dot(z_axis, target)
+    if sin_angle < 1e-12:
+        if cos_angle > 0:
+            return [0.0, 0.0, 0.0]       # target already [0,0,1]
+        else:
+            return [0.0, np.pi, 0.0]     # 180° flip around Y
+    axis = cross / sin_angle
+    angle = np.arctan2(sin_angle, cos_angle)
+    rotvec = axis * angle
+    return rotvec.tolist()
+
+def obj_to_stl(pts):
+    """Convert from OBJ coords (Y-up) to STL coords (Z-up).
+    Mapping: OBJ(x, y, z) → STL(x, -z, y)."""
+    pts = np.asarray(pts)
+    if pts.ndim == 1:
+        return np.array([pts[0], -pts[2], pts[1]])
+    return np.column_stack([pts[:, 0], -pts[:, 2], pts[:, 1]])
+
+
 
 def create_transformation(A, B):
     A = np.asarray(A)[:, :3]
@@ -67,7 +84,7 @@ def create_transformation(A, B):
     T[:3, :3] = R
     T[:3, 3] = t
 
-    # Normal transform
+    # Normal transform (4×4 homogeneous)
     R_normal = np.linalg.inv(R).T
     T_normal = np.eye(4)
     T_normal[:3, :3] = R_normal
@@ -80,13 +97,17 @@ def create_transformation(A, B):
         # Transform point
         p_new = T @ [*point, 1]
 
-        # Transform normal
+        # Transform normal (4×4 homogeneous, extract xyz before normalizing)
         nx,ny,nz = normal
-        n_new = T_normal @ [nx,ny,nz, 1]
+        n_new = (T_normal @ [nx,ny,nz, 1])[:3]
         n_new /= np.linalg.norm(n_new)
-        r_new = _normal_to_rxyz(n_new[:3])
+        r_new = _normal_to_rxyz(n_new)
 
         return [*p_new[:3], *r_new]
+
+    # Expose 4×4 matrices as attributes for inspection/composition
+    AtoB.T = T
+    AtoB.T_normal = T_normal
 
     return AtoB
 
