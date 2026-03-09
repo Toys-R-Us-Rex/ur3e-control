@@ -36,11 +36,6 @@ def collect_data(robot_arm, world_measure):
 
     return np.array(tcps)
 
-def _normalize(v):
-    v = np.asarray(v, dtype=float)
-    n = np.linalg.norm(v)
-    return v / n if n > 0 else v
-
 def _normal_to_rxyz(n):
     n = np.asarray(n, dtype=float)
     target = -n  # pen faces into surface
@@ -142,3 +137,14 @@ def tcp_trans(tcp1, tcp2):
     r_new = _rotmat_to_rotvec(R_new)
 
     return np.concatenate([p_new, r_new])
+
+
+def obj_to_stl(pts):
+    """
+    Convert from OBJ coords (Y-up) to STL coords (Z-up).
+    Mapping: OBJ(x, y, z) → STL(x, -z, y).
+    """
+    pts = np.asarray(pts)
+    if pts.ndim == 1:
+        return np.array([pts[0], -pts[2], pts[1]])
+    return np.column_stack([pts[:, 0], -pts[:, 2], pts[:, 1]])

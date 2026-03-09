@@ -3,3 +3,4 @@ ur_log/
 *venv/
 *.egg-info/
 *vscode/
+*idea/
