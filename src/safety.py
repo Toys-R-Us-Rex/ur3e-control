@@ -43,7 +43,30 @@ def is_colliding(joint_angles, robot, objects):
     return self_collision(joint_angles) or has_collision(None, robot, objects)
 
 
-# -- Public function --
+# -- Public functions --
+
+def free_space_travel(robot, start_tcp, end_tcp, obstacles):
+    """Move from start_tcp to end_tcp in free space, avoiding obstacles.
+
+    Uses compute_safe_waypoints to plan a collision-free path, then
+    executes it as a continuous movel_waypoints call.
+
+    Note: collision checking (has_collision, self_collision) currently
+    returns False — all paths are allowed. Long-term, load the robot
+    URDF and object STLs into a proper collider (e.g. trimesh + FCL).
+    """
+    from URBasic import TCP6D, TCP6DDescriptor
+
+    start_xyz = np.array([start_tcp.x, start_tcp.y, start_tcp.z])
+    end_xyz = np.array([end_tcp.x, end_tcp.y, end_tcp.z])
+    waypoints = compute_safe_waypoints(start_xyz, end_xyz, obstacles)
+    tcps = [
+        TCP6D.createFromMetersRadians(*wp, 0, np.pi, 0)
+        for wp in waypoints[1:]  # skip start (already there)
+    ]
+    descriptors = [TCP6DDescriptor(tcp) for tcp in tcps]
+    robot.movel_waypoints(descriptors)
+
 
 def compute_safe_waypoints(A, B, obstacles):
     """Find waypoints [A, ..., B] that go around all obstacles."""
