@@ -1,8 +1,57 @@
-import numpy as np
+'''
+TCP transformation tool for UR-series robots.
 
+This module provides utilities to:
+- collect TCP transformation data (`collect_data`)
+- compute the transformation function (`create_transformation`)
+- transform TCP points (`tcp_trans`)
+- convert between .obj and .stl coordinate systems (`obj_to_stl`, `stl_to_obj`)
+
+Usage
+-----
+This module is designed to be used with the URBasic library, from which this
+project is derived:
+    https://github.com/ISC-HEI/ur3e-control
+
+Typical workflow:
+    1. Collect transformation samples using `collect_data`.
+    2. Compute the transformation using `create_transformation`.
+    3. Convert coordinate systems using resulting function `AtoB`.
+
+Additional tool:
+    - `tcp_trans`: composes two TCP poses (position + rotation vector) and returns the resulting pose.
+    - `obj_to_stl`, `stl_to_obj`: convert between .obj and .stl coordinate systems.
+
+MIT License
+
+Copyright (c) 2026 Mariéthoz Cédric
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Author:     Mariéthoz Cédric, with assistance from Copilote AI (Microsoft)
+Course:     HES-SO Valais-Wallis, Engineering Track 304
+'''
+
+import numpy as np
+from utils import *
 
 def collect_data(robot_arm, world_measure):
-    from URBasic import TCP6D, UrScript
     if len(world_measure) < 3:
         print("Minimum 3 measure points.")
         raise ValueError("You don't provide eanough world measure")
@@ -35,23 +84,6 @@ def collect_data(robot_arm, world_measure):
     robot_arm.end_freedrive_mode()
 
     return np.array(tcps)
-
-def _normal_to_rxyz(n):
-    n = np.asarray(n, dtype=float)
-    target = -n  # pen faces into surface
-    z_axis = np.array([0.0, 0.0, 1.0])
-    cross = np.cross(z_axis, target)
-    sin_angle = np.linalg.norm(cross)
-    cos_angle = np.dot(z_axis, target)
-    if sin_angle < 1e-12:
-        if cos_angle > 0:
-            return [0.0, 0.0, 0.0]       # target already [0,0,1]
-        else:
-            return [0.0, np.pi, 0.0]     # 180° flip around Y
-    axis = cross / sin_angle
-    angle = np.arctan2(sin_angle, cos_angle)
-    rotvec = axis * angle
-    return rotvec
 
 def create_transformation(A, B):
     A = np.asarray(A)[:, :3]
@@ -90,7 +122,7 @@ def create_transformation(A, B):
         nx,ny,nz = normal
         n_new = (T_normal @ [nx,ny,nz, 1])[:3]
         n_new /= np.linalg.norm(n_new)
-        r_new = _normal_to_rxyz(n_new)
+        r_new = normal_to_rotvec(n_new)
 
         return [*p_new[:3], *r_new]
 
@@ -100,26 +132,6 @@ def create_transformation(A, B):
 
     return AtoB
 
-
-def _rotvec_to_rotmat(r):
-    theta = np.linalg.norm(r)
-    if theta < 1e-12:
-        return np.eye(3)
-    k = r / theta
-    K = np.array([[0, -k[2], k[1]],
-                  [k[2], 0, -k[0]],
-                  [-k[1], k[0], 0]])
-    return np.eye(3) + np.sin(theta)*K + (1-np.cos(theta))*(K @ K)
-
-def _rotmat_to_rotvec(R):
-    theta = np.arccos((np.trace(R) - 1) / 2)
-    if theta < 1e-12:
-        return np.zeros(3)
-    rx = (R[2,1] - R[1,2]) / (2*np.sin(theta))
-    ry = (R[0,2] - R[2,0]) / (2*np.sin(theta))
-    rz = (R[1,0] - R[0,1]) / (2*np.sin(theta))
-    return theta * np.array([rx, ry, rz])
-
 def tcp_trans(tcp1, tcp2):
     # Décomposition
     p1 = np.array(tcp1[:3])
@@ -128,23 +140,62 @@ def tcp_trans(tcp1, tcp2):
     r2 = np.array(tcp2[3:])
 
     # Matrices de rotation
-    R1 = _rotvec_to_rotmat(r1)
-    R2 = _rotvec_to_rotmat(r2)
+    R1 = rotvec_to_rotmat(r1)
+    R2 = rotvec_to_rotmat(r2)
 
     # Composition
     p_new = p1 + R1 @ p2
     R_new = R1 @ R2
-    r_new = _rotmat_to_rotvec(R_new)
+    r_new = rotmat_to_rotvec(R_new)
 
     return np.concatenate([p_new, r_new])
-
 
 def obj_to_stl(pts):
     """
     Convert from OBJ coords (Y-up) to STL coords (Z-up).
     Mapping: OBJ(x, y, z) → STL(x, -z, y).
+
+    Accepts:
+        - a single point: (3,)
+        - a list of points: (N, 3)
     """
     pts = np.asarray(pts)
+
+    # Single point
     if pts.ndim == 1:
-        return np.array([pts[0], -pts[2], pts[1]])
-    return np.column_stack([pts[:, 0], -pts[:, 2], pts[:, 1]])
+        x, y, z = pts
+        return np.array([x, -z, y])
+
+    # Multiple points (N, 3)
+    if pts.ndim == 2 and pts.shape[1] == 3:
+        x = pts[:, 0]
+        y = pts[:, 1]
+        z = pts[:, 2]
+        return np.column_stack([x, -z, y])
+
+    raise ValueError("Input must be shape (3,) or (N,3)")
+
+def stl_to_obj(pts):
+    """
+    Convert from STL coordinates (Z-up) to OBJ coordinates (Y-up).
+    Mapping: STL(x, y, z) → OBJ(x, -z, y).
+
+    Accepts:
+        - a single point: (3,)
+        - a list of points: (N, 3)
+    """
+    pts = np.asarray(pts)
+
+    # Single point
+    if pts.ndim == 1:
+        x, y, z = pts
+        return np.array([x, -z, y])
+
+    # Multiple points (N, 3)
+    if pts.ndim == 2 and pts.shape[1] == 3:
+        x = pts[:, 0]
+        y = pts[:, 1]
+        z = pts[:, 2]
+        return np.column_stack([x, -z, y])
+
+    raise ValueError("Input must be shape (3,) or (N,3)")

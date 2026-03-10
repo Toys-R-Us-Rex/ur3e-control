@@ -44,12 +44,30 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 '''
 
 import numpy as np
+from utils import *
 
 from URBasic import TCP6D
 from URBasic import UrScript
 
-
 def collect_data(robot_arm: UrScript, num_measure:int = 20):
+    """
+    Interactively collect multiple TCP poses while the robot is in freedrive mode.
+
+    The user manually moves the robot to different orientations and confirms
+    each capture. A minimum of 6 measurements is required for calibration.
+
+    Parameters
+    ----------
+    robot_arm : UrScript
+        Interface to the robot controller, providing freedrive and pose access.
+    num_measure : int, optional
+        Number of samples to collect. Values below 6 are automatically raised.
+
+    Returns
+    -------
+    tcps : list of list[float]
+        Captured TCP poses in UR format [x, y, z, rx, ry, rz].
+    """
     if num_measure < 6:
         num_measure = 6
         print("Minimum 6 measures.")
@@ -83,33 +101,25 @@ def collect_data(robot_arm: UrScript, num_measure:int = 20):
 
     return tcps
 
-def _pose_to_T(pose):
-    """
-    pose: [x, y, z, rx, ry, rz] (UR standard, base_T_flange)
-    returns 4x4 homogeneous matrix
-    """
-    x, y, z, rx, ry, rz = pose
-    theta = np.linalg.norm([rx, ry, rz])
-    if theta < 1e-9:
-        R = np.eye(3)
-    else:
-        k = np.array([rx, ry, rz]) / theta
-        K = np.array([[0, -k[2], k[1]],
-                      [k[2], 0, -k[0]],
-                      [-k[1], k[0], 0]])
-        R = np.eye(3) + np.sin(theta)*K + (1-np.cos(theta))*(K @ K)
-
-    T = np.eye(4)
-    T[:3, :3] = R
-    T[:3, 3] = [x, y, z]
-    return T
-
 def _calibrate_tcp(flange_poses):
     """
-    flange_poses: list of 4x4 homogeneous matrices T_i (base_T_flange)
-    Returns:
-        t_tcp_flange: 3-vector, TCP in flange frame
-        c_tcp_base:   3-vector, TCP in base frame
+    Solve for the TCP position using a pivot calibration method.
+
+    Given multiple flange poses (base_T_flange), this function computes:
+    - the TCP position expressed in the flange frame
+    - the fixed TCP position expressed in the base frame
+
+    Parameters
+    ----------
+    flange_poses : list of ndarray, shape (4, 4)
+        Homogeneous transforms of the flange for each measurement.
+
+    Returns
+    -------
+    t_tcp_flange : ndarray, shape (3,)
+        TCP coordinates expressed in the flange frame.
+    c_tcp_base : ndarray, shape (3,)
+        TCP coordinates expressed in the base frame (pivot point).
     """
     N = len(flange_poses)
     A = np.zeros((3 * N, 6))
@@ -130,8 +140,27 @@ def _calibrate_tcp(flange_poses):
     return t_tcp_flange, c_tcp_base
 
 def get_tcp_offset(tcps):
+    """
+    Estimate the TCP offset from a set of measured poses and validate data quality.
+
+    The function:
+    - converts poses to transforms
+    - evaluates consistency of the TCP position across measurements
+    - checks that flange motion and rotation variation are sufficient
+    - performs a least-squares TCP calibration
+
+    Parameters
+    ----------
+    tcps : list of list[float]
+        TCP poses in UR format [x, y, z, rx, ry, rz].
+
+    Returns
+    -------
+    tcp_offset : TCP6D
+        Estimated TCP offset expressed in the flange frame.
+    """
     # Convert poses to matrices
-    Ts = [_pose_to_T(p) for p in tcps]
+    Ts = [pose_to_T(p) for p in tcps]
 
     # Extract R_i and p_i
     Rs = [T[:3, :3] for T in Ts]
@@ -169,6 +198,21 @@ def get_tcp_offset(tcps):
     return tcp_offset
 
 def _rotate_around_tcp(tcp: TCP6D, rx, ry, rz):
+    """
+    Create a new TCP pose by applying additional rotations around the TCP.
+
+    Parameters
+    ----------
+    tcp : TCP6D
+        Reference TCP pose.
+    rx, ry, rz : float
+        Additional rotations (radians) to apply around each axis.
+
+    Returns
+    -------
+    new_pose : TCP6D
+        Updated pose with modified orientation.
+    """
     new_pose = TCP6D.createFromMetersRadians(
         tcp.x, tcp.y, tcp.z,
         tcp.rx + rx,
@@ -178,6 +222,25 @@ def _rotate_around_tcp(tcp: TCP6D, rx, ry, rz):
     return new_pose
 
 def validate_calibration(robot_arm: UrScript, rot=0.2):
+    """
+    Generate a sequence of poses to visually validate TCP calibration.
+
+    The robot is rotated around the TCP by ±rot radians about each axis.
+    The resulting poses can be plotted or inspected to verify that the
+    TCP remains stationary in space.
+
+    Parameters
+    ----------
+    robot_arm : UrScript
+        Robot interface used to read the current TCP pose.
+    rot : float, optional
+        Rotation magnitude (radians) applied around each axis.
+
+    Returns
+    -------
+    motion : list of TCP6D
+        Sequence of poses including the reference pose and rotated poses.
+    """
     # Perform validation rotations
     axes = [
         (rot, 0, 0),
