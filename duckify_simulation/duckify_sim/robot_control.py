@@ -48,6 +48,8 @@ from .kinematics import (
 
 T_DELAY = 0.1
 
+T_DELAY = 0.1
+
 
 class SimRobotControl:
     """Mirrors the robot_control interface from ISCoin (UrScriptExt)."""
@@ -151,8 +153,10 @@ class SimRobotControl:
         print(f"movej sent (duration={duration_sec}s)")
 
         if wait:
-            time.sleep(duration_sec + T_DELAY)
-            return self._verify_position(joints)
+            return self._wait_until_motion_done(
+                target_joints=joints,
+                timeout_sec=max(5.0, float(duration_sec) + 10.0),
+            )
 
         return True
 
@@ -190,7 +194,6 @@ class SimRobotControl:
         print(f"movej_waypoints sent ({len(points)} points, total={cumulative_sec}s)")
 
         if wait:
-            time.sleep(cumulative_sec + T_DELAY)
             final_target = Joint6D.createFromRadians(*points[-1]["positions"])
             return self._wait_until_motion_done(
                 target_joints=final_target,
@@ -288,7 +291,6 @@ class SimRobotControl:
         print(f"movel_waypoints sent ({len(points)} points, total={cumulative_sec}s)")
 
         if wait:
-            time.sleep(cumulative_sec + T_DELAY)
             final_target = Joint6D.createFromRadians(*points[-1]["positions"])
             return self._wait_until_motion_done(
                 target_joints=final_target,
