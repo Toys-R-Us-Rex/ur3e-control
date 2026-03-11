@@ -2,6 +2,12 @@
     "generated_at": "2026-03-05T15:49:50.270120",
     "model": "/home/louis/Documents/Duckify/assets/models/duck_uv.obj",
     "texture": "/home/louis/Documents/Duckify/assets/textures/fancy_test_duck.png",
+    "calibration": [
+        [0.0,0.0,-2.0],
+        [0.0,-31.85,-80.0],
+        [47.50,47.50,-152.0],
+        [-47.50,-47.50,-152.0]
+    ],
     "traces": [
         {
             "color": 0,
