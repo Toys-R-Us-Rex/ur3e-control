@@ -193,7 +193,7 @@ def validate_calibration(robot_arm: UrScript, rot=0.2):
 
     for rx, ry, rz in axes:
         test_pose = _rotate_around_tcp(tcp_ref, rx, ry, rz)
-        print(f"Rotating: rx={rx}, ry={ry}, rz={rz}")
+        # print(f"Rotating: rx={rx}, ry={ry}, rz={rz}")
         motion.append(test_pose)
         motion.append(tcp_ref)
 

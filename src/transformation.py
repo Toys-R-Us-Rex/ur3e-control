@@ -112,6 +112,44 @@ def create_transformation(A, B):
     return AtoB
 
 
+def build_manual_transform(rz_deg=45.0, translation=(0, -0.2, 0.1), scale=0.001):
+    """Build obj2robot callable from manual rz rotation + translation.
+
+    Parameters
+    ----------
+    rz_deg : float — rotation around Z axis in degrees.
+    translation : 3-tuple — (tx, ty, tz) in meters (robot frame).
+    scale : float — uniform scale factor (default 0.001 for mm→m).
+    """
+    from scipy.spatial.transform import Rotation as Rot
+
+    rz_rad = np.radians(rz_deg)
+    R = Rot.from_euler('z', rz_rad).as_matrix() * scale  # rotation + scale
+
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = translation
+
+    # Normal transform: inverse-transpose of R (scale cancels after normalization)
+    R_pure = R / scale
+    R_normal = np.linalg.inv(R_pure).T
+    T_normal = np.eye(4)
+    T_normal[:3, :3] = R_normal
+
+    def obj2robot(p):
+        p = np.asarray(p)
+        point, normal = p[:3], p[3:]
+        p_new = T @ [*point, 1]
+        n_new = (T_normal @ [*normal, 1])[:3]
+        n_new /= np.linalg.norm(n_new)
+        r_new = _normal_to_rxyz(n_new)
+        return [*p_new[:3], *r_new]
+
+    obj2robot.T = T
+    obj2robot.T_normal = T_normal
+    return obj2robot
+
+
 def _rotvec_to_rotmat(r):
     theta = np.linalg.norm(r)
     if theta < 1e-12:
