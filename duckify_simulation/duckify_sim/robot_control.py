@@ -30,11 +30,14 @@ URBasic:    API modelled on UrScriptExt by Martin Huus Bjerge,
             Uses data types from URBasic.waypoint6d (Joint6D, TCP6D).
 """
 
+import logging
 import math
 import time
 import numpy as np
 
 from URBasic.waypoint6d import Joint6D, TCP6D, TCP6DDescriptor
+
+log = logging.getLogger(__name__)
 
 from .ros_bridge import read_joint_states, extract_6joints, publish_trajectory, estimate_duration
 from .kinematics import (
@@ -322,7 +325,7 @@ class SimRobotControl:
         if qnear is not None:
             q0 = np.array(qnear.toList())
         else:
-            q0 = np.array(self.get_actual_joint_positions().toList())
+            q0 = np.zeros(6)
 
         T_desired = pose_to_matrix(pose)
         T_flange = T_desired @ np.linalg.inv(self._model_correction @ self._tcp_offset)
@@ -345,18 +348,21 @@ class SimRobotControl:
                 tcp_check = matrix_to_tcp6d(T_check)
                 err = np.sum((np.array(tcp_check.toList()[:3]) - np.array(pose.toList()[:3])) ** 2)
                 if err < 0.001:
+                    log.debug("IK OK for TCP=(%.4f, %.4f, %.4f), "
+                              "%d/%d valid solutions",
+                              pose.x, pose.y, pose.z, len(valid), len(solutions))
                     return Joint6D.createFromRadians(*best.tolist())
-                print(f"WARNING: Analytical IK best solution has position error={np.sqrt(err):.6f}m")
+                log.debug("IK best solution has position error=%.6fm", np.sqrt(err))
 
         # Reachability diagnostic
         pos = np.array([pose.x, pose.y, pose.z])
         reach = np.linalg.norm(pos)
-        max_reach = abs(UR3E_DH[1]["a"]) + abs(UR3E_DH[2]["a"])
-        print(f"INFO: Analytical IK returned 0 valid solutions for target at "
-              f"distance={reach:.4f}m (max reach ~{max_reach:.3f}m)")
-        if reach > max_reach:
-            print(f"WARNING: Target is likely outside the UR3e workspace "
-                  f"({reach:.4f}m > {max_reach:.3f}m)")
+        n_raw = len(solutions) if solutions else 0
+        flange_pos = T_flange[:3, 3]
+        flange_reach = np.linalg.norm(flange_pos[:2])
+        log.debug("IK failed for TCP=(%.4f, %.4f, %.4f), reach=%.4fm | "
+                  "%d raw solutions | flange_r=%.4fm",
+                  pose.x, pose.y, pose.z, reach, n_raw, flange_reach)
 
         return None
 
