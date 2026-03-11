@@ -21,7 +21,7 @@ from src.config import (
 log = logging.getLogger(__name__)
 
 # Default URDF lives in robot_reports/ next to the mesh directories
-_DEFAULT_URDF = Path(__file__).resolve().parents[1] / '..' / 'robot_reports' / 'ur3e.urdf'
+_DEFAULT_URDF = Path(__file__).resolve().parents[1] / 'duckify_simulation' / 'urdf' / 'ur3e.urdf'
 
 # PyBullet joint indices for the 6 revolute joints (skip fixed joints)
 _NUM_DOF = 6

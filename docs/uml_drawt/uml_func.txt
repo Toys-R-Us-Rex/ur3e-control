@@ -1,0 +1,155 @@
+@startuml
+
+package "calibration" {
+
+    annotation collect_data <<function>> {
+        ' Description
+        Collect the data for the calibraition
+        --
+        ' input parameters
+        robot_arm: UrScript
+        num_measure:int = 20
+        --
+        ' output
+        return : list[list[x,y,z,rx,ry,rz]]
+    }
+
+    annotation get_tcp_offset <<function>> {
+        ' Description
+        Compute and return the TCP offset
+        --
+        ' input parameters
+        tcps : list[list[x,y,z,rx,ry,rz]]
+        --
+        ' output
+        return : TCP6D
+    }
+
+    annotation validate_calibration <<function>> {
+        ' Description
+        Compute a set of TCP positions
+        to validate the calibration
+        --
+        ' input parameters
+        robot : UrScript
+        rot   : float
+        --
+        ' output
+        return : list[TCP6D]
+    }
+}
+
+package "transformation" {
+
+    annotation collect_data <<function>> {
+        ' Description
+        Collect the data for the transformation
+        --
+        ' input parameters
+        robot_arm: UrScript
+        world_measure:array(N,3)
+        --
+        ' output
+        return : array(N,6)
+    }
+
+    annotation tcp_trans <<function>> {
+        ' Description
+        Compute the transformation
+        from one TCP to another
+        --
+        ' input parameters
+        tcp1 : array(6)
+        tcp2 : array(6)
+        --
+        ' output
+        return : array(6)
+    }
+
+    annotation obj_to_stl <<function>> {
+        ' Description
+        Convert coordinate system
+        from .obj to .stl
+        --
+        ' input parameters
+        pts : array(N,3)
+        --
+        ' output
+        return : array(N,3)
+    }
+
+    annotation create_transformation <<function>> {
+        ' Description
+        Create a transformation function
+        from space A to space B
+        --
+        ' input parameters
+        A : list[array(6)]
+        B : list[array(6)]
+        --
+        ' output
+        return : function AtoB
+    }
+
+    - annotation AtoB <<function>> {
+        p : array(6)
+        --
+        return : array(6)
+    }
+
+    create_transformation ..|> AtoB : creates
+}
+
+package "utils" {
+
+    annotation pose_to_T <<function>> {
+        ' Description
+        Convert a UR-style pose vector
+        [x, y, z, rx, ry, rz]
+        into a 4x4 homogeneous matrix
+        --
+        ' input parameters
+        pose : array(6)
+        --
+        ' output
+        return : array(4,4)
+    }
+
+    annotation normal_to_rotvec <<function>> {
+        ' Description
+        Convert a normal vector to a
+        rotation vector representation
+        --
+        ' input parameters
+        n : array(3)
+        --
+        ' output
+        return : array(3)
+    }
+
+    annotation rotvec_to_rotmat <<function>> {
+        ' Description
+        Convert a rotation vector
+        to a 3x3 rotation matrix
+        --
+        ' input parameters
+        r : array(3)
+        --
+        ' output
+        return : array(3,3)
+    }
+
+    annotation rotmat_to_rotvec <<function>> {
+        ' Description
+        Convert a 3x3 rotation matrix
+        to a rotation vector
+        --
+        ' input parameters
+        R : array(3,3)
+        --
+        ' output
+        return : array(3)
+    }
+}
+
+@enduml
