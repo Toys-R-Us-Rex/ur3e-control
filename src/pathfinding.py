@@ -4,72 +4,106 @@ MIT License
 Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 '''
 
+import logging
+
 import numpy as np
-import trimesh
+from scipy.spatial.transform import Rotation as Rot, Slerp
 
-from src.config import SAFE_MARGIN, PUSH_STEP, MAX_DEPTH, MAX_PUSH, SURFACE_MARGIN
+from src.config import PUSH_STEP, MAX_DEPTH, MAX_PUSH
 
-
-def segment_collides(A, B, mesh):
-    """Check if segment A->B hits the mesh."""
-    direction = B - A
-    length = np.linalg.norm(direction)
-    if length == 0:
-        return False
-    origins = np.array([A])
-    directions = np.array([direction / length])
-    hits = mesh.ray.intersects_any(origins, directions)
-    if not hits[0]:
-        return False
-    # only count hits that are actually within our segment
-    locations = mesh.ray.intersects_location(origins, directions)[0]
-    if len(locations) == 0:
-        return False
-    distances = np.linalg.norm(locations - A, axis=1)
-    return np.any(distances <= length + SAFE_MARGIN)
+log = logging.getLogger(__name__)
 
 
-def perpendicular_up(A, B):
-    """Get a direction perpendicular to A->B that points up."""
-    seg = B - A
-    up = np.array([0.0, 0.0, 1.0]) # only on z axis
-    perp = up - seg * (np.dot(up, seg) / np.dot(seg, seg))
-    norm = np.linalg.norm(perp)
-    if norm < 1e-12:
-        return up
-    return perp / norm
+def find_path(robot, checker, A_tcp, B_tcp, depth=0, qnear=None):
+    """Recursively find a collision-free TCP path from A to B.
 
+    Algorithm:
+      1. Try direct A→B segment.
+      2. If it fails, compute the SLERP midpoint and lift it +Z until safe.
+      3. Recurse on A→mid and mid→B.
 
-def lift_midpoint(A, B, mesh):
-    """Push midpoint just outside the mesh surface, then add margin."""
-    mid = (A + B) / 2.0
-    push_dir = perpendicular_up(A, B)
-    total_push = 0.0
+    Parameters
+    ----------
+    robot : robot controller (provides get_inverse_kin).
+    checker : CollisionChecker with validate_tcp / validate_path.
+    A_tcp, B_tcp : TCP6D — start and end poses.
+    depth : current recursion depth.
+    qnear : Joint6D or list — IK seed for consistent solutions.
 
-    # Push until midpoint is outside the mesh
-    while mesh.contains([mid])[0] and total_push < MAX_PUSH:
-        mid = mid + push_dir * PUSH_STEP
-        total_push += PUSH_STEP
+    Returns list[TCP6D] waypoints from A to B (inclusive).
+    """
+    if qnear is None:
+        q = robot.get_inverse_kin(A_tcp)
+        if q is not None:
+            qnear = q
 
-    if total_push >= MAX_PUSH:
-        raise RuntimeError("lift_midpoint: could not clear mesh")
+    # Try the direct segment
+    ok, _fail_idx, _reason, _traj = checker.validate_path(
+        robot, [A_tcp, B_tcp], qnear=qnear,
+        orientation_search=True,
+    )
+    if ok:
+        return [A_tcp, B_tcp]
 
-    # Add surface margin
-    mid = mid + push_dir * SURFACE_MARGIN
-    return mid
-
-
-def find_path(A, B, mesh, depth=0):
-    """Recursively split A->B around the mesh."""
-    if not segment_collides(A, B, mesh):
-        return [A, B]
+    log.info("find_path depth=%d: direct A(%.4f,%.4f,%.4f)->B(%.4f,%.4f,%.4f) "
+             "failed at sample %d: %s",
+             depth, A_tcp.x, A_tcp.y, A_tcp.z,
+             B_tcp.x, B_tcp.y, B_tcp.z, _fail_idx, _reason)
 
     if depth >= MAX_DEPTH:
-        raise RuntimeError("find_path: max depth reached")
+        raise RuntimeError(
+            f"find_path: max depth {MAX_DEPTH} reached, cannot find safe path"
+        )
 
-    mid = lift_midpoint(A, B, mesh)
-    left = find_path(A, mid, mesh, depth + 1)
-    right = find_path(mid, B, mesh, depth + 1)
+    # Lift the midpoint until it validates
+    mid_tcp = lift_midpoint(robot, checker, A_tcp, B_tcp, qnear=qnear)
 
-    # left ends with mid, right starts with mid -> skip duplicate
+    left = find_path(robot, checker, A_tcp, mid_tcp, depth + 1, qnear=qnear)
+    right = find_path(robot, checker, mid_tcp, B_tcp, depth + 1, qnear=qnear)
+
+    # left ends with mid, right starts with mid — skip duplicate
     return left + right[1:]
+
+
+def lift_midpoint(robot, checker, A_tcp, B_tcp, qnear=None):
+    """Compute midpoint of A→B and lift it upward (+Z) until it validates.
+
+    Uses SLERP for rotation interpolation so that averaging rotation
+    vectors like ry ≈ -2.27 and ry ≈ +2.26 gives ry ≈ π (tool-down),
+    not ry ≈ 0 (tool-up).
+
+    Returns a TCP6D at the lifted midpoint position.
+    """
+    from URBasic import TCP6D
+
+    a_pos = np.array([A_tcp.x, A_tcp.y, A_tcp.z])
+    b_pos = np.array([B_tcp.x, B_tcp.y, B_tcp.z])
+    mid_pos = (a_pos + b_pos) / 2.0
+
+    # SLERP the orientations at t=0.5
+    a_rotvec = np.array([A_tcp.rx, A_tcp.ry, A_tcp.rz])
+    b_rotvec = np.array([B_tcp.rx, B_tcp.ry, B_tcp.rz])
+    rots = Rot.from_rotvec([a_rotvec, b_rotvec])
+    slerp = Slerp([0, 1], rots)
+    mid_rotvec = slerp(0.5).as_rotvec()
+
+    total_push = 0.0
+    last_reason = ""
+    while total_push < MAX_PUSH:
+        tcp = TCP6D.createFromMetersRadians(
+            float(mid_pos[0]), float(mid_pos[1]), float(mid_pos[2]),
+            float(mid_rotvec[0]), float(mid_rotvec[1]), float(mid_rotvec[2]),
+        )
+        ok, _q, last_reason, _ = checker.validate_tcp(
+            robot, tcp, qnear=qnear, orientation_search=True,
+        )
+        if ok:
+            return tcp
+        log.debug("lift z=%.4f failed: %s", mid_pos[2], last_reason)
+        mid_pos[2] += PUSH_STEP
+        total_push += PUSH_STEP
+
+    raise RuntimeError(
+        f"lift_midpoint: could not find valid midpoint after "
+        f"pushing {MAX_PUSH}m upward (last reason: {last_reason})"
+    )
