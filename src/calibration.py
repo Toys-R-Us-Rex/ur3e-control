@@ -44,7 +44,7 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 '''
 
 import numpy as np
-from utils import *
+from src.utils import *
 
 from URBasic import TCP6D
 from URBasic import UrScript

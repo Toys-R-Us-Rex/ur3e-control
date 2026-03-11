@@ -49,7 +49,7 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 '''
 
 import numpy as np
-from utils import *
+from src.utils import *
 
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:

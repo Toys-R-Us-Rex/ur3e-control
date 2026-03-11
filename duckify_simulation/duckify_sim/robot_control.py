@@ -418,3 +418,43 @@ class SimRobotControl:
             print("Movement DONE — but target not fully reached (possible collision?)")
 
         return all_ok
+
+
+
+    def get_tcp_force(self, wait=True) -> TCP6D:
+        '''
+        Returns the wrench (Force/Torque vector) at the TCP
+
+        The external wrench is computed based on the error between the joint
+        torques required to stay on the trajectory and the expected joint
+        torques. The function returns "p[Fx (N), Fy(N), Fz(N), TRx (Nm), TRy (Nm),
+        TRz (Nm)]". where Fx, Fy, and Fz are the forces in the axes of the robot
+        base coordinate system measured in Newtons, and TRx, TRy, and TRz
+        are the torques around these axes measured in Newton times Meters.
+        
+        Parameters:
+        wait:     function return when movement is finished
+
+        Return Value:
+        the wrench (pose)
+        '''
+        if wait:
+            time.sleep(0.5)
+        return TCP6D.createFromMetersRadians(1,2,3,0.1,0.2,0.3)
+    
+    def force(self, wait=True) -> float:
+        '''
+        Returns the force exerted at the TCP
+
+        Return the current externally exerted force at the TCP. The force is the
+        norm of Fx, Fy, and Fz calculated using get tcp force().
+        
+        Parameters:
+        wait:     function return when movement is finished
+        
+        Return Value
+        The force in Newtons (float) -> pi/2
+        '''
+        if wait:
+            time.sleep(0.5)
+        return np.pi/2
