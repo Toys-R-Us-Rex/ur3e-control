@@ -112,9 +112,9 @@ def matrix_to_tcp6d(T):
     if abs(angle) < 1e-6:
         rx, ry, rz = 0.0, 0.0, 0.0
     elif abs(angle - math.pi) < 1e-6:
-        rx = math.pi * math.sqrt((R[0, 0] + 1) / 2)
-        ry = math.pi * math.sqrt((R[1, 1] + 1) / 2)
-        rz = math.pi * math.sqrt((R[2, 2] + 1) / 2)
+        rx = math.pi * math.sqrt(max(0.0, (R[0, 0] + 1) / 2))
+        ry = math.pi * math.sqrt(max(0.0, (R[1, 1] + 1) / 2))
+        rz = math.pi * math.sqrt(max(0.0, (R[2, 2] + 1) / 2))
     else:
         k = angle / (2 * math.sin(angle))
         rx = k * (R[2, 1] - R[1, 2])
