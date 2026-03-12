@@ -49,8 +49,13 @@ Author:     Savioz Pierre-Yves, with assistance from Claude AI (Anthropic)
 Course:     HES-SO Valais-Wallis, Engineering Track 304
 '''
 
+import json
 import numpy as np
+
 from src.utils import *
+from src.logger import LoggingLog
+
+from URBasic.iscoin import ISCoin
 
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:
@@ -72,15 +77,19 @@ def collect_data(robot_arm, world_measure):
             else:
                 break
 
-        robot_arm.end_freedrive_mode()
+        if i == "":
+            robot_arm.end_freedrive_mode()
 
-        # Return robot positions
-        tcp = robot_arm.get_actual_tcp_pose().toList()
+            # Return robot positions
+            tcp = robot_arm.get_actual_tcp_pose().toList()
 
-        tcps.append(tcp)
-        k += 1
-        print("Captured measure ", k)
+            tcps.append(tcp)
+            k += 1
+            print("Captured measure ", k)
 
+        if i == "exit":
+            robot_arm.end_freedrive_mode()
+            raise Exception("Wrong calibration; exit")
 
     robot_arm.end_freedrive_mode()
 
@@ -238,3 +247,28 @@ def stl_to_obj(pts):
         return np.column_stack([x, -z, y])
 
     raise ValueError("Input must be shape (3,) or (N,3)")
+
+
+def launch_transformation(robot_ip, file_path, log: LoggingLog):
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
+
+        p_world = np.array(data["calibration"])
+        p_tcps = collect_data(iscoin.robot_control, p_world)
+
+        log.save_worldtcp(p_world, p_tcps)
+        log.log_worldtcp(p_world,p_tcps)
+
+        obj2robot = create_transformation(p_world, p_tcps)
+
+        log.save_transformation(obj2robot)
+        log.log_transformation(obj2robot)
+
+        iscoin.close()
+        return True
+    except Exception as e:
+        log.log(f"Transforamtion skipped: {e}")
+        return False

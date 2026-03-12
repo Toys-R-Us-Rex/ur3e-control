@@ -44,10 +44,13 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 '''
 
 import numpy as np
+
 from src.utils import *
+from src.logger import LoggingLog
 
 from URBasic import TCP6D
 from URBasic import UrScript
+from URBasic import ISCoin
 
 def collect_data(robot_arm: UrScript, num_measure:int = 20):
     """
@@ -87,15 +90,19 @@ def collect_data(robot_arm: UrScript, num_measure:int = 20):
             else:
                 break
 
-        robot_arm.end_freedrive_mode()
+        if i == "":
+            robot_arm.end_freedrive_mode()
 
-        # Return robot positions
-        tcp = robot_arm.get_actual_tcp_pose().toList()
+            # Return robot positions
+            tcp = robot_arm.get_actual_tcp_pose().toList()
 
-        tcps.append(tcp)
-        k += 1
-        print("Captured sample ", k)
-
+            tcps.append(tcp)
+            k += 1
+            print("Captured sample ", k)
+        
+        if i == "exit":
+            robot_arm.end_freedrive_mode()
+            raise Exception("Wrong calibration; exit")
 
     robot_arm.end_freedrive_mode()
 
@@ -261,3 +268,21 @@ def validate_calibration(robot_arm: UrScript, rot=0.2):
         motion.append(tcp_ref)
 
     return motion
+
+
+
+def launch_calibration(robot_ip, log: LoggingLog):
+    try:
+        iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
+
+        tcps = collect_data(iscoin.robot_control)
+        tcp_offset = get_tcp_offset(tcps)
+
+        log.save_calibration(tcps, tcp_offset)
+        log.log_calibration(tcps, tcp_offset)
+        
+        iscoin.close()
+        return True
+    except Exception as e:
+        log.log(f"Calibration skipped: {e}")
+        return False
