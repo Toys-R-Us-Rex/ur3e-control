@@ -1,5 +1,7 @@
 """UR3e forward and inverse kinematics using DH parameters.
 
+Pure-Python analytical kinematics — no robot connection or simulator needed.
+
 MIT License
 
 Copyright (c) 2026 Pierre-Yves Savioz
@@ -35,7 +37,7 @@ import math
 import numpy as np
 from numpy import sin, cos, arctan2, arccos, sqrt, pi
 
-from URBasic.waypoint6d import TCP6D
+from URBasic.waypoint6d import Joint6D, TCP6D
 
 # UR3e DH parameters (standard values from Universal Robots)
 # [a, d, alpha] for each joint
@@ -59,6 +61,7 @@ def dh_matrix(theta, a, d, alpha):
         [0,   sa,       ca,      d     ],
         [0,   0,        0,       1     ],
     ])
+
 
 def forward_kinematics_matrix(joint_angles):
     """Compute the flange 4x4 homogeneous matrix from joint angles.
@@ -93,6 +96,7 @@ def forward_kinematics_matrix(joint_angles):
 
     return T
 
+
 def matrix_to_tcp6d(T):
     """Convert a 4x4 homogeneous matrix to TCP6D (position + axis-angle).
 
@@ -105,8 +109,7 @@ def matrix_to_tcp6d(T):
     x, y, z = T[0, 3], T[1, 3], T[2, 3]
 
     R = T[:3, :3]
-    trace_term = (np.trace(R) - 1) / 2
-    angle = math.acos(max(-1, min(1, trace_term)))
+    angle = math.acos(max(-1, min(1, (np.trace(R) - 1) / 2)))
 
     if abs(angle) < 1e-6:
         rx, ry, rz = 0.0, 0.0, 0.0
@@ -122,6 +125,7 @@ def matrix_to_tcp6d(T):
 
     return TCP6D.createFromMetersRadians(x, y, z, rx, ry, rz)
 
+
 def forward_kinematics(joint_angles):
     """Compute the TCP pose from joint angles using UR3e DH parameters.
 
@@ -132,58 +136,6 @@ def forward_kinematics(joint_angles):
         TCP6D with [x, y, z, rx, ry, rz] (position in meters, rotation as axis-angle).
     """
     return matrix_to_tcp6d(forward_kinematics_matrix(joint_angles))
-
-# def forward_kinematics(joint_angles):
-#     """Compute the TCP pose from joint angles using UR3e DH parameters.
-
-#     Args:
-#         joint_angles: list of 6 joint angles in radians.
-
-#     Returns:
-#         TCP6D with [x, y, z, rx, ry, rz] (position in meters, rotation as axis-angle).
-#     """
-#     T = np.eye(4)
-
-#     for i in range(6):
-#         theta = joint_angles[i]
-#         a = UR3E_DH[i]["a"]
-#         d = UR3E_DH[i]["d"]
-#         alpha = UR3E_DH[i]["alpha"]
-
-#         ct = math.cos(theta)
-#         st = math.sin(theta)
-#         ca = math.cos(alpha)
-#         sa = math.sin(alpha)
-
-#         Ti = np.array([
-#             [ct, -st * ca,  st * sa, a * ct],
-#             [st,  ct * ca, -ct * sa, a * st],
-#             [0,   sa,       ca,      d],
-#             [0,   0,        0,       1],
-#         ])
-
-#         T = T @ Ti
-
-#     # Extract position
-#     x, y, z = T[0, 3], T[1, 3], T[2, 3]
-
-#     # Extract rotation matrix and convert to axis-angle
-#     R = T[:3, :3]
-#     angle = math.acos(max(-1, min(1, (np.trace(R) - 1) / 2)))
-
-#     if abs(angle) < 1e-6:
-#         rx, ry, rz = 0.0, 0.0, 0.0
-#     elif abs(angle - math.pi) < 1e-6:
-#         rx = math.pi * math.sqrt(max(0.0, (R[0, 0] + 1) / 2))
-#         ry = math.pi * math.sqrt(max(0.0, (R[1, 1] + 1) / 2))
-#         rz = math.pi * math.sqrt(max(0.0, (R[2, 2] + 1) / 2))
-#     else:
-#         k = angle / (2 * math.sin(angle))
-#         rx = k * (R[2, 1] - R[1, 2])
-#         ry = k * (R[0, 2] - R[2, 0])
-#         rz = k * (R[1, 0] - R[0, 1])
-
-#     return TCP6D.createFromMetersRadians(x, y, z, rx, ry, rz)
 
 
 def pose_to_matrix(pose):
@@ -376,3 +328,63 @@ def select_closest_ik(solutions, qnear, joint_limits=None):
             best = sol
 
     return best
+
+
+def get_inverse_kin(pose, qnear, tcp_offset=None, model_correction=None):
+    """Standalone inverse kinematics — no robot connection needed.
+
+    Computes up to 8 analytical IK solutions for the UR3e and returns the
+    one closest to *qnear*, validated by FK round-trip.
+
+    Parameters
+    ----------
+    pose : TCP6D
+        Target end-effector pose.
+    qnear : Joint6D or array-like
+        Seed joint configuration for selecting among multiple solutions.
+    tcp_offset : 4x4 array, optional
+        Tool-center-point offset matrix (default: identity).
+    model_correction : 4x4 array, optional
+        Model correction matrix (default: identity).
+
+    Returns
+    -------
+    Joint6D or None
+        Best joint solution, or None if no valid solution found.
+    """
+    if tcp_offset is None:
+        tcp_offset = np.eye(4)
+    if model_correction is None:
+        model_correction = np.eye(4)
+
+    q0 = np.array(qnear.toList() if hasattr(qnear, 'toList') else list(qnear))
+
+    T_desired = pose_to_matrix(pose)
+    T_flange = T_desired @ np.linalg.inv(model_correction @ tcp_offset)
+    solutions = analytical_ik(T_flange)
+
+    if not solutions:
+        return None
+
+    # Validate each solution with FK round-trip and keep only accurate ones
+    valid = []
+    target = np.array(pose.toList())
+    for sol in solutions:
+        T_check = forward_kinematics_matrix(sol.tolist()) @ model_correction @ tcp_offset
+        tcp_check = matrix_to_tcp6d(T_check)
+        err_pos = np.sum((np.array(tcp_check.toList()[:3]) - target[:3]) ** 2)
+        if err_pos < 0.001:
+            valid.append(sol)
+
+    best = select_closest_ik(valid if valid else solutions, q0)
+    if best is None:
+        return None
+
+    # Final FK validation
+    T_check = forward_kinematics_matrix(best.tolist()) @ model_correction @ tcp_offset
+    tcp_check = matrix_to_tcp6d(T_check)
+    err = np.sum((np.array(tcp_check.toList()[:3]) - np.array(pose.toList()[:3])) ** 2)
+    if err < 0.001:
+        return Joint6D.createFromRadians(*best.tolist())
+
+    return None

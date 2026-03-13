@@ -51,14 +51,14 @@ class SimRobotControl:
 
 
     def __init__(self):
-        self._tcp_offset = np.eye(4)  # no tool by default (identity)
+        self._tcp_offset = np.eye(4) # no tool by default (identity)
 
     def set_tcp(self, pose):
         """Set the Tool Center Point offset (e.g. for a pen in the gripper).
 
         Args:
             pose: TCP6D offset from the flange to the tool tip.
-                  For a pen of length L along Z: TCP6D.createFromMetersRadians(0, 0, L, 0, 0, 0)
+                For a pen of length L along Z: TCP6D.createFromMetersRadians(0, 0, L, 0, 0, 0)
         """
         self._tcp_offset = pose_to_matrix(pose)
 
