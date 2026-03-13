@@ -237,7 +237,7 @@ class LoggingForce:
                 magnitude = robot.force(wait=False)
                 timestamp = time.time() - time_start
 
-                row = [timestamp] + tcp.toList() + wrench.toList() + [magnitude]
+                row = [timestamp] + tcp.toList() + wrench + [magnitude]
                 writer.writerow(row)
                 f.flush()  # ensure data is physically written
 
