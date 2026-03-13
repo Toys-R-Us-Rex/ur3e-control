@@ -192,7 +192,10 @@ class SimRobotControl:
         if wait:
             time.sleep(cumulative_sec + T_DELAY)
             final_target = Joint6D.createFromRadians(*points[-1]["positions"])
-            return self._verify_position(final_target)
+            return self._wait_until_motion_done(
+                target_joints=final_target,
+                timeout_sec=max(5.0, float(cumulative_sec) + 10.0),
+            )
 
         return True
 
@@ -287,7 +290,10 @@ class SimRobotControl:
         if wait:
             time.sleep(cumulative_sec + T_DELAY)
             final_target = Joint6D.createFromRadians(*points[-1]["positions"])
-            return self._verify_position(final_target)
+            return self._wait_until_motion_done(
+                target_joints=final_target,
+                timeout_sec=max(5.0, float(cumulative_sec) + 10.0),
+            )
 
         return True
 
@@ -395,6 +401,27 @@ class SimRobotControl:
         return valid
 
     # -- Internal helpers ----------------------------------------------------
+
+    def _wait_until_motion_done(self, target_joints, timeout_sec=15.0, tolerance=0.05, poll_sec=0.1):
+        """Block until robot is steady and close to target, or timeout."""
+        deadline = time.time() + timeout_sec
+        time.sleep(T_DELAY)
+
+        while time.time() < deadline:
+            if self.is_steady() and self._is_within_tolerance(target_joints, tolerance=tolerance):
+                print("Movement OK — target reached")
+                return True
+            time.sleep(poll_sec)
+
+        print(f"WARNING: Motion timeout after {timeout_sec:.1f}s")
+        return self._verify_position(target_joints, tolerance=tolerance)
+
+    def _is_within_tolerance(self, target_joints, tolerance=0.05):
+        """Check target proximity without printing warnings."""
+        actual = self.get_actual_joint_positions()
+        target_list = target_joints.toList()
+        actual_list = actual.toList()
+        return all(abs(target_list[i] - actual_list[i]) <= tolerance for i in range(6))
 
     def _verify_position(self, target_joints, tolerance=0.05):
         """Check if the robot reached the target position.
