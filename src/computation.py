@@ -32,6 +32,7 @@ class Segment:
     v: float             # velocity m/s
     a: float             # acceleration m/s²
     r: float = 0.0       # blend radius
+    joint_waypoints: list | None = None  # optional pre-computed Joint6D list
 
 
 def compute_draw_motion(trace, obj2robot, hover_offset=None, max_pts=None):
@@ -91,7 +92,7 @@ def compute_positioning_motion(robot, checker, start_tcp, end_tcp):
             f"{fail_idx}: {reason}"
         )
 
-    return waypoints
+    return waypoints, _joint_traj
 
 
 # ---------------------------------------------------------------------------
@@ -113,16 +114,16 @@ def _hover_tcp(surface_tcp, hover_offset=None):
     )
 
 
-def _validate_surface_points(checker, robot, surface_tcps):
+def _validate_surface_points(checker, robot, surface_tcps, qnear=None):
     """Validate each surface TCP with check_obstacle=False.
 
-    Returns (valid_checklist, reasons) where valid_checklist[i] is True if
-    surface_tcps[i] passed validation.  Chains qnear through valid
-    points for IK consistency.
+    Returns (valid_checklist, reasons, joint_solutions) where
+    valid_checklist[i] is True if surface_tcps[i] passed validation.
+    Chains qnear through valid points for IK consistency.
     """
     valid_checklist = []
     reasons = []
-    qnear = None
+    joint_solutions = []
 
     for tcp in surface_tcps:
         ok, q, reason, _ = checker.validate_tcp(
@@ -131,10 +132,11 @@ def _validate_surface_points(checker, robot, surface_tcps):
         )
         valid_checklist.append(ok)
         reasons.append(reason)
+        joint_solutions.append(q)
         if ok:
             qnear = q
 
-    return valid_checklist, reasons
+    return valid_checklist, reasons, joint_solutions
 
 
 def _split_into_runs(valid_checklist):
@@ -180,7 +182,7 @@ def build_drawing_plan(robot, checker, traces, obj2robot,
             continue
 
         # Per-point validation (no obstacle collision for surface points)
-        valid_checklist, reasons = _validate_surface_points(
+        valid_checklist, reasons, _ = _validate_surface_points(
             checker, robot, surface_pts,
         )
 
@@ -239,7 +241,7 @@ def build_drawing_plan(robot, checker, traces, obj2robot,
 
             # TRAVEL to hover entry
             if current_tcp is not None:
-                travel_wps = compute_positioning_motion(
+                travel_wps, _ = compute_positioning_motion(
                     robot, checker, current_tcp, h_entry,
                 )
                 segments.append(Segment(
@@ -278,7 +280,7 @@ def build_drawing_plan(robot, checker, traces, obj2robot,
     # Final TRAVEL back home
     if home_joints is not None and current_tcp is not None:
         home_tcp = robot.get_fk(home_joints)
-        travel_wps = compute_positioning_motion(
+        travel_wps, _ = compute_positioning_motion(
             robot, checker, current_tcp, home_tcp,
         )
         segments.append(Segment(

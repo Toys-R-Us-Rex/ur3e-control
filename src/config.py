@@ -15,6 +15,10 @@ SURFACE_MARGIN = 0.01  # meters — clearance above mesh surface
 TCP_Y_MAX        = 0.0      # meters — TCP must stay at Y ≤ 0
 TCP_Z_MIN        = 0.0      # meters — TCP must stay at Z ≥ 0
 TCP_Z_MAX        = 0.5      # meters — TCP must stay at Z ≤ 0.5
+LINK_Z_MIN       = {        # per-link Z minimum (meters) — links not listed are unconstrained
+    3: 0.10,                 # upper_arm_link — must stay above 10 cm
+    4: 0.10,                 # forearm_link   — must stay above 10 cm
+}
 UR3E_MAX_REACH   = None      # disabled — IK solver handles reachability
 FREE_TRAVEL_STEP = 0.005    # meters — interpolation density for path validation
 

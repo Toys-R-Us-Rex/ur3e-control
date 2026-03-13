@@ -125,10 +125,12 @@ def publish_trajectory(points, timeout=15):
     points_str_parts = []
     for pt in points:
         pos_str = ", ".join(str(p) for p in pt["positions"])
-        sec = pt["duration_sec"]
+        t = pt["duration_sec"]
+        sec = int(t)
+        nsec = int((t - sec) * 1e9)
         points_str_parts.append(
             f"{{positions: [{pos_str}], "
-            f"time_from_start: {{sec: {sec}, nanosec: 0}}}}"
+            f"time_from_start: {{sec: {sec}, nanosec: {nsec}}}}}"
         )
     points_str = ", ".join(points_str_parts)
 
@@ -148,4 +150,4 @@ def publish_trajectory(points, timeout=15):
 
 def estimate_duration(v):
     """Estimate movement duration from velocity parameter."""
-    return max(2, int(math.ceil(math.pi / v)))
+    return 0.3

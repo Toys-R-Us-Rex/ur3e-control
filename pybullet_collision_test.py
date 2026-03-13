@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Standalone PyBullet drawing-pipeline visualizer — no Gazebo or real robot needed.
+"""Standalone PyBullet drawing-pipeline visualizer.
 
 Orchestrates the drawing pipeline manually (bypassing build_drawing_plan)
 so that each stage can be inspected visually in the PyBullet GUI.
@@ -7,13 +7,15 @@ so that each stage can be inspected visually in the PyBullet GUI.
 
 import logging
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
 
+from src.logger import LoggingLog
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# Silence verbose IK diagnostics from robot_control and safety
 logging.basicConfig(level=logging.WARNING)
 
 import pybullet as pb
@@ -32,6 +34,8 @@ from src.computation import (
 from src.config import DRAW_V, DRAW_A, APPROACH_V, APPROACH_A, TRAVEL_V, TRAVEL_A
 
 USE_CALIBRATION = False
+DEBUG = False
+record = LoggingLog()
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -69,23 +73,51 @@ def draw_line_strip(waypoints, color, width=2):
 # ===========================  STAGE 0 — Setup  ============================
 robot = SimRobotControl()
 
+# tcps = [
+#     [0.0024946337740892888, -0.3594913915339868, 0.06033167700558813, -0.62069755529755, -2.369727486212462, -0.13752393611863362],
+#     [-0.07482225018547103, -0.35685269130655106, 0.07009337653443365, 1.9372057315922462, 2.190232377619723, 0.6719840297817087],
+#     [-0.08776793211801745, -0.2979812165503483, 0.051154992555969794, 2.3781388566898687, 0.2623998383341909, 0.7178051284770465],
+#     [-0.0006933205535983589, -0.340924257935631, 0.06551204074775754, -2.879088789274111, -0.4716877213448937, 0.8276834472055694],
+#     [-0.04094004360899719, -0.3437262194580261, 0.0786140415986546, -3.087426800813378, 0.2627406174702693, 0.06421242457662117],
+#     [0.026621421400990636, -0.3469050147213359, 0.033956680032955974, -2.5014091646201537, -0.22918589994059693, 1.5168173293250897],
+# ]
+
+
+# calibration 20 points
 tcps = [
-    [0.0024946337740892888, -0.3594913915339868, 0.06033167700558813, -0.62069755529755, -2.369727486212462, -0.13752393611863362],
-    [-0.07482225018547103, -0.35685269130655106, 0.07009337653443365, 1.9372057315922462, 2.190232377619723, 0.6719840297817087],
-    [-0.08776793211801745, -0.2979812165503483, 0.051154992555969794, 2.3781388566898687, 0.2623998383341909, 0.7178051284770465],
-    [-0.0006933205535983589, -0.340924257935631, 0.06551204074775754, -2.879088789274111, -0.4716877213448937, 0.8276834472055694],
-    [-0.04094004360899719, -0.3437262194580261, 0.0786140415986546, -3.087426800813378, 0.2627406174702693, 0.06421242457662117],
-    [0.026621421400990636, -0.3469050147213359, 0.033956680032955974, -2.5014091646201537, -0.22918589994059693, 1.5168173293250897],
-]
+        [0.09923226380963619, -0.3936237333456494, 0.2241707102377116, 0.576534502783353, -2.801623474567781, -0.4841337776020336],
+        [-0.05415645689244093, -0.3953984087553033, 0.21928851997659993, 0.23402931706237418, 2.778033572687844, 0.45840199634357587],
+        [-0.054524138620445695, -0.39546163267180845, 0.2194560899784096, 0.2335390262119786, 2.783785824873644, 0.4510348107203675],
+        [0.0752223292033933, -0.40520983496228175, 0.2260599738507684, 0.4572457692623414, -2.9109062545914886, -0.5364679269112991],
+        [0.0829983763105315, -0.3145440306229818, 0.23651078628355368, 0.3951666302237936, -2.8778640875293946, 0.020826760853426392],
+        [0.17537792453011916, -0.27966304416915055, 0.1871802429879547, 0.4399208472865239, -2.4166507384311493, 0.11158336986030104],
+        [-0.11994350407194002, -0.2833976738613014, 0.18952203929656486, -0.11587882239515394, 2.488783491737581, -0.2874871978684851],
+        [0.042587583213620814, -0.42502159418902, 0.2219296443030877, -1.819892078036102, 2.2285954928177354, 0.5297978049692356],
+        [0.04244370933942005, -0.42547028481239557, 0.22238439939526014, -1.8232450157901965, 2.2322450410810823, 0.5277815763416596],
+        [0.020874413390515264, -0.34192399335641094, 0.2416659479631329, -1.6019421625827266, 2.6368378551232445, 0.06821140243218453],
+        [0.020803283214023204, -0.3418580959196876, 0.24363220771625155, -1.6034030755162376, 2.6412352323485133, 0.06264503078869965],
+        [-0.0790726920318296, -0.26904313811943686, 0.21128926726360914, -1.5548308665720385, 2.3598614347530305, -0.6531326432466081],
+        [0.0427270175708247, -0.2473905824164213, 0.2299557666201055, 2.1997240823524864, -1.7930464879794845, 0.21897511307224746],
+        [0.13236126549367827, -0.37709210594126424, 0.2134888319694367, 2.113428037038218, -2.0042534442643, -0.709899151721018],
+        [0.053381366331223756, -0.3159752956877128, 0.24229245067174737, 1.8209996559857016, -2.4222938552259685, -0.050512659771693856],
+        [-0.049955483412195634, -0.41217334754184276, 0.21506155931685994, -1.6191731898646298, 2.109641966964828, 0.12393449118187727],
+        [0.11965373370731985, -0.426189467377058, 0.20111114739956754, -2.3836120944741555, 1.6242241381287574, 0.8568802013152502],
+        [0.1072294696915219, -0.2674062588065899, 0.22084409245177472, 2.144447557404073, -1.698541221842688, -0.16060169509460684],
+        [-0.10731169114667957, -0.19413670798855612, 0.15654354818487162, 2.3277646358217945, -1.2822755883172325, 1.191980512607587],
+        [0.020926595559954138, -0.3139355562333332, 0.24095599082082952, 3.0691506381776072, -0.3992164073191759, 0.04457895483726155]
+    ]
+
+
 
 tcp_offset = get_tcp_offset(tcps)
 robot.set_tcp(tcp_offset)
-robot.set_model_correction(TCP6D.createFromMetersRadians(0, 0, 0.1638, 0, 0, 0))
+# robot.set_model_correction(TCP6D.createFromMetersRadians(0, 0, 0.1638, 0, 0, 0))
 
 home = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
 
 # ========================  STAGE 1 — Load traces  =========================
-file_path = "duck_uv-fancy_test_duck-trace.json"
+file_path = "duckify_simulation/paths/duck_uv-fancy_test_duck-trace.json"
+# file_path = "duckify_simulation/paths/duck_uv-fancy_test_duck-trace_v2.json"
 traces, data = load_traces(file_path)
 print(f"Trace data: {len(traces)} traces")
 
@@ -95,9 +127,16 @@ if USE_CALIBRATION:
     p_world_stl = obj_to_stl(p_world)
     obj2robot = create_transformation(p_world_stl, p_tcp)
 else:
-    obj2robot = build_manual_transform(rz_deg=0.0, translation=(0.3, -0.4, 0.3))
+    obj2robot = build_manual_transform(rz_deg=0.0, translation=(0.32, -0.4, 0.155))
+
+    print("ici -----------------------------------")
+    print(obj2robot)
+    #
+    # p_world, p_tcp = record.load_worldtcp()
+    # obj2robot = create_transformation(p_world, p_tcp)
 
 selected_trace_indices_eyes = [0, 9]
+selected_trace_indices_sideI = [19]
 selected_trace_indices_sideInf = [76, 77, 78]
 selected_trace_indices_sideIsc = [19, 41, 59]
 selected_trace_indices_medium = [0, 9, 19, 41, 59, 76, 77, 78, 138, 139, 140, 141, 142, 143, 144, 145]
@@ -123,17 +162,24 @@ quat = Rot.from_matrix(R_pure).as_quat().tolist()
 checker = CollisionChecker(
     obstacle_stls=[
         {
-            'path': 'my_simulation/3d_objects/duck_model.stl',
+            'path': 'duckify_simulation/3d_objects/duck_model.stl',
             'scale': [0.001, 0.001, 0.001],
             'position': pos,
             'orientation': quat,
         },
         {
-            'path': 'my_simulation/3d_objects/workspace.stl',
+            'path': 'duckify_simulation/3d_objects/workspace.stl',
             'scale': [1, 1, 1],
             'position': [0, 0, 0],
             'orientation': [0, 0, 0, 1],
+            'exclude_links': [1, 2, 3, 4],
         },
+        # {
+        #     'path': 'duckify_simulation/3d_objects/support_duck_simulation.stl',
+        #     'scale': [0.001, 0.001, 0.001],
+        #     'position': pos,
+        #     'orientation': quat,
+        # },
     ],
     gui=True,
 )
@@ -167,6 +213,7 @@ for surface_pts in surface_tcps_per_trace:
         preview_line_ids.append(lid)
 
 print(f"\nShowing {len(surface_tcps_per_trace)} traces as orange lines (surface only, no hover).")
+
 input("Press ENTER to continue to validation...")
 
 for lid in preview_line_ids:
@@ -200,7 +247,8 @@ for trace_i, surface_pts in enumerate(surface_tcps_per_trace):
 
     print(f"\n    => {ok_count} OK, {fail_count} skipped")
 
-input("\nPress ENTER to continue to run splitting...")
+if DEBUG:
+    input("\nPress ENTER to continue to run splitting...")
 
 # Clear validation spheres (disable rendering for speed)
 pb.configureDebugVisualizer(pb.COV_ENABLE_RENDERING, 0, physicsClientId=checker.cid)
@@ -236,7 +284,8 @@ for trace_i, valid_mask in enumerate(valid_masks_per_trace):
             print(f"    Run {global_run_idx} ({run_start}-{run_end}): color {color}")
             global_run_idx += 1
 
-input("\nPress ENTER to continue to hover generation...")
+if DEBUG:
+    input("\nPress ENTER to continue to hover generation...")
 
 # ==========  STAGE 6 — Hover generation + critical validation  ============
 print("\nGenerating and validating hover points...")
@@ -296,13 +345,16 @@ for trace_i, (surface_pts, runs) in enumerate(zip(surface_tcps_per_trace, runs_p
 
 if abort:
     print("\nABORT: one or more hover validations failed (see CRITICAL messages above).")
-    input("Press ENTER to close PyBullet...")
+    if DEBUG:
+        input("Press ENTER to close PyBullet...")
     if pb.isConnected(checker.cid):
         pb.disconnect(checker.cid)
     sys.exit(1)
 
 print(f"\nAll hover points valid. {len(validated_runs)} run(s) ready for planning.")
-input("Press ENTER to continue to pathfinding...")
+
+if DEBUG:
+    input("Press ENTER to continue to pathfinding...")
 
 # ===========  STAGE 7 — Assemble segments + pathfinding  ==================
 # Enable pathfinding logging so we see why things fail
@@ -435,30 +487,56 @@ for i, seg in enumerate(segments):
     wp_end = seg.waypoints[-1]
     print(f"  Segment {i}: {label} ({len(seg.waypoints)} wps)  "
           f"{_fmt_tcp(wp_start)} → {_fmt_tcp(wp_end)}")
-    input(f"    Press ENTER to draw {label}...")
+    if DEBUG:
+        input(f"    Press ENTER to draw {label}...")
     draw_line_strip(seg.waypoints, color, width)
 
 print(f"\n  {len(segments)} segments visualized")
+
+# ===========  STAGE 8.5 — Arm animation  ==================================
+ANIM_DELAY = 0.02   # seconds per waypoint; set to 0 to skip animation
+
+input("\nPress ENTER to start arm animation...")
+print("\nAnimating arm through all segments...")
+
+for i, seg in enumerate(segments):
+    label = seg.motion_type.name
+    n = len(seg.joint_waypoints) if seg.joint_waypoints else 0
+    print(f"  Segment {i}: {label} ({n} joint waypoints)")
+    if seg.joint_waypoints:
+        for jw in seg.joint_waypoints:
+            q = jw.toList() if hasattr(jw, 'toList') else list(jw)
+            checker.set_joint_angles(q)
+            if ANIM_DELAY > 0:
+                time.sleep(ANIM_DELAY)
+
+print("Animation complete.")
 
 # ===========  STAGE 9 — Print waypoints to console  =======================
 print("\n" + "=" * 60)
 print("STAGE 9 — Waypoint dump")
 print("=" * 60)
 
+all_joint_waypoints = []
 for i, seg in enumerate(segments):
     has_joints = hasattr(seg, "joint_waypoints") and seg.joint_waypoints is not None
     print(f"\n  Segment {i}: {seg.motion_type.name}  ({len(seg.waypoints)} waypoints)")
     for j, wp in enumerate(seg.waypoints):
-        tcp_vals = wp.toList()
-        line = f"    WP {j:3d}  TCP=[{', '.join(f'{v:+.4f}' for v in tcp_vals)}]"
         if has_joints and j < len(seg.joint_waypoints):
             jw = seg.joint_waypoints[j]
             jnt_vals = jw.toList()
-            line += f"  J=[{', '.join(f'{v:+.4f}' for v in jnt_vals)}]"
-        print(line)
+            all_joint_waypoints.append(jw)
+            print(f"    WP {j:3d}  J=[{', '.join(f'{v:+.4f}' for v in jnt_vals)}]")
 
-print(f"\n  {len(segments)} segments, "
-      f"{sum(len(s.waypoints) for s in segments)} total waypoints printed.")
+print(f"\n  {len(segments)} segments, {len(all_joint_waypoints)} joint waypoints.")
+
+
+
+# ===========  STAGE 10 logger  =======================
+
+record.save_waypoints(all_joint_waypoints)
+
+
 
 # ===========================  Cleanup  ====================================
 input("\nPress ENTER to close PyBullet...")

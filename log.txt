@@ -1,0 +1,64 @@
+2026-03-13 09:21:26 - Saved waypoints data to file save_data/waypoints_data.pkl
+2026-03-13 09:23:52 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 09:32:07 - Start Duckify_main_.py
+2026-03-13 09:32:50 - Start Duckify_main_.py
+2026-03-13 09:33:11 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 09:41:12 - Test skipped: Command '['docker', 'exec', 'iscoin_simulator', 'bash', '-c', 'source /opt/ros/humble/setup.bash && ros2 topic echo /joint_states --once']' timed out after 15 seconds
+2026-03-13 09:44:48 - Start Duckify_main_.py
+2026-03-13 09:45:10 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:06:42 - Start Duckify_main_.py
+2026-03-13 10:06:45 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:10:15 - Start Duckify_main_.py
+2026-03-13 10:10:19 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:16:22 - Start Duckify_main_.py
+2026-03-13 10:16:25 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:17:29 - Start Duckify_main_.py
+2026-03-13 10:17:31 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:23:20 - Start Duckify_main_.py
+2026-03-13 10:27:09 - Saved waypoints data to file save_data/waypoints_data.pkl
+2026-03-13 10:30:31 - Start Duckify_main_.py
+2026-03-13 10:30:38 - Start Duckify_main_.py
+2026-03-13 10:30:40 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:30:55 - Start Duckify_main_.py
+2026-03-13 10:30:57 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:32:35 - Start Duckify_main_.py
+2026-03-13 10:32:47 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:35:13 - Saved waypoints data to file save_data/waypoints_data.pkl
+2026-03-13 10:36:55 - Start Duckify_main_.py
+2026-03-13 10:36:56 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:40:10 - Start Duckify_main_.py
+2026-03-13 10:40:12 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:46:55 - Start Duckify_main_.py
+2026-03-13 10:46:57 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 10:50:57 - Start Duckify_main_.py
+2026-03-13 10:51:08 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-13 10:52:07 - Saved worldtcp data to file save_data/worldtcp_data.pkl
+2026-03-13 10:52:07 - Object Calibration (world,robot):
+
+([ 0.  0. -2.] => [ 0.2622402  -0.40329266  0.22487474 -0.80986455  2.42905369 -0.18776783])
+([  0.   -31.85 -80.  ] => [ 0.19623917 -0.40817639  0.10428865  0.20780289  1.92793558  0.2589278 ])
+([ -47.5  -47.5 -152. ] => [ 0.37132615 -0.41635451  0.08055697  1.5656584  -2.25662585  0.32353189])
+([  47.5   47.5 -152. ] => [ 0.22472087 -0.38689316  0.07284726 -0.63342101  2.48134256  0.36512296])
+
+2026-03-13 10:52:07 - Saved transformation data to file save_data/transformation_data.pkl
+2026-03-13 10:52:07 - Transformation (world => robot):
+[[-4.19967662e-03  2.65646313e-03 -2.38555414e-04  2.61763089e-01]
+ [ 1.29537876e-04  1.80581566e-04 -1.11254996e-05 -4.03314910e-01]
+ [-1.44807252e-03  1.36691767e-03  9.87817521e-04  2.26850377e-01]
+ [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
+[[-1.59364570e+02  9.20753904e+01 -3.61029164e+02  0.00000000e+00]
+ [ 2.42862208e+03  3.69947120e+03 -1.55904467e+03  0.00000000e+00]
+ [-1.11332778e+01  6.39020335e+01  9.07586036e+02  0.00000000e+00]
+ [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
+2026-03-13 10:53:01 - Loaded transformation data from file save_data/transformation_data.pkl
+2026-03-13 10:58:26 - Saved waypoints data to file save_data/waypoints_data.pkl
+2026-03-13 10:59:33 - Start Duckify_main_.py
+2026-03-13 10:59:35 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 11:00:00 - Start Duckify_main_.py
+2026-03-13 11:00:02 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 11:06:28 - Loaded transformation data from file save_data/transformation_data.pkl
+2026-03-13 11:08:20 - Loaded calibration data from file save_data/worldtcp_data.pkl
+2026-03-13 11:28:43 - Start Duckify_main_.py
+2026-03-13 11:29:21 - Loaded waypoints data from file save_data/waypoints_data.pkl
+2026-03-13 12:18:59 - Saved waypoints data to file save_data/waypoints_data.pkl
+2026-03-13 12:24:17 - Saved waypoints data to file save_data/waypoints_data.pkl

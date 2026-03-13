@@ -15,8 +15,9 @@ from scipy.spatial.transform import Rotation
 from src.config import (
     JOINT_LIMITS,
     TCP_Y_MAX, TCP_Z_MIN, TCP_Z_MAX, UR3E_MAX_REACH,
-    FREE_TRAVEL_STEP,
+    FREE_TRAVEL_STEP, LINK_Z_MIN,
 )
+from src.kinematics import get_all_ik_solutions
 
 log = logging.getLogger(__name__)
 
@@ -163,6 +164,7 @@ class CollisionChecker:
         # Load obstacle meshes and build the obstacle detector
         self._gui = gui
         self.obstacle_ids: list[int] = []
+        self._obstacle_exclude_links: dict[int, set[int]] = {}
         for obs in (obstacle_stls or []):
             col_shape = p.createCollisionShape(
                 p.GEOM_MESH,
@@ -188,6 +190,7 @@ class CollisionChecker:
                 physicsClientId=self.cid,
             )
             self.obstacle_ids.append(oid)
+            self._obstacle_exclude_links[oid] = set(obs.get('exclude_links', []))
         self._rebuild_obstacle_detector()
 
     def _rebuild_obstacle_detector(self) -> None:
@@ -196,6 +199,7 @@ class CollisionChecker:
             ((self.robot_id, link), (oid, -1))
             for oid in self.obstacle_ids
             for link in self._link_indices
+            if link not in self._obstacle_exclude_links.get(oid, set())
         ]
         self._obstacle_detector = (
             CollisionDetector(self.cid, obstacle_pairs)
@@ -222,6 +226,33 @@ class CollisionChecker:
         if self._obstacle_detector is None:
             return False
         return self._obstacle_detector.in_collision(margin=margin)
+
+    def get_obstacle_collision_info(self, margin: float = 0.005) -> list[dict]:
+        """Return details for each robot-link/obstacle pair in collision."""
+        collisions = []
+        for oid in self.obstacle_ids:
+            pts = p.getClosestPoints(
+                self.robot_id, oid, distance=margin,
+                physicsClientId=self.cid,
+            )
+            for pt in pts:
+                link_idx = pt[3]
+                if link_idx in self._obstacle_exclude_links.get(oid, set()):
+                    continue
+                link_name = ""
+                if link_idx >= 0:
+                    info = p.getJointInfo(self.robot_id, link_idx,
+                                          physicsClientId=self.cid)
+                    link_name = info[12].decode("utf-8")
+                collisions.append({
+                    "obstacle_id": oid,
+                    "link_index": link_idx,
+                    "link_name": link_name,
+                    "distance": pt[8],
+                    "contact_point_robot": pt[5],
+                    "contact_point_obstacle": pt[6],
+                })
+        return collisions
 
     # -- Layer 1: Modular point validators ------------------------------------
 
@@ -319,31 +350,97 @@ class CollisionChecker:
         return False, None, reason, tcp
 
     def _try_full_validation(self, robot, tcp, qnear, margin, check_obstacle):
-        """Run IK → joint limits → collision checks.
+        """Run IK → joint limits → collision checks for ALL IK solutions.
+
+        Uses ``get_all_ik_solutions`` to test every analytical solution
+        (up to 8).  Solutions are sorted by joint-space distance to *qnear*
+        so the closest collision-free one is picked first.
 
         Returns (ok, Joint6D_or_None, reason).
         """
-        ok, q, reason = self.check_ik_solvable(robot, tcp, qnear)
-        if not ok:
-            return False, None, reason
+        tcp_offset = getattr(robot, '_tcp_offset', np.eye(4))
+        model_correction = getattr(robot, '_model_correction', np.eye(4))
+        candidates = get_all_ik_solutions(tcp, tcp_offset, model_correction)
+        if not candidates:
+            return False, None, "IK has no solution"
 
-        ok, reason = self.check_joint_limits(q)
-        if not ok:
-            return False, None, reason
+        # Sort candidates by distance to qnear (closest first)
+        if qnear is not None:
+            qnear_arr = np.array(qnear.toList() if hasattr(qnear, 'toList') else list(qnear))
+            candidates.sort(
+                key=lambda c: np.sum((np.array(c.toList() if hasattr(c, 'toList') else list(c)) - qnear_arr) ** 2)
+            )
 
-        q_arr = q.toList() if hasattr(q, 'toList') else list(q)
-        self.set_joint_angles(q_arr)
-        if self.has_self_collision():
-            return False, None, "Self-collision detected"
-        if check_obstacle and self.has_obstacle_collision(margin):
-            return False, None, "Obstacle collision detected"
+        first_reason = None
 
-        return True, q, ""
+        for q in candidates:
+            # Joint limits
+            ok, reason = self.check_joint_limits(q)
+            if not ok:
+                if first_reason is None:
+                    first_reason = reason
+                continue
+
+            q_arr = q.toList() if hasattr(q, 'toList') else list(q)
+            self.set_joint_angles(q_arr)
+
+            # Check per-link Z minimums
+            link_z_fail = False
+            if LINK_Z_MIN:
+                for link_idx, z_min in LINK_Z_MIN.items():
+                    state = p.getLinkState(self.robot_id, link_idx,
+                                          physicsClientId=self.cid)
+                    link_z = state[0][2]
+                    if link_z < z_min:
+                        if first_reason is None:
+                            info = p.getJointInfo(self.robot_id, link_idx,
+                                                  physicsClientId=self.cid)
+                            link_name = info[12].decode("utf-8")
+                            first_reason = (
+                                f"Link {link_idx} [{link_name}] Z={link_z:.4f} "
+                                f"< LINK_Z_MIN={z_min}"
+                            )
+                        link_z_fail = True
+                        break
+            if link_z_fail:
+                continue
+
+            if self.has_self_collision():
+                if first_reason is None:
+                    first_reason = "Self-collision detected"
+                continue
+
+            if check_obstacle and self.has_obstacle_collision(margin):
+                if first_reason is None:
+                    details = self.get_obstacle_collision_info(margin)
+                    if details:
+                        parts = []
+                        for d in details:
+                            pt = d["contact_point_obstacle"]
+                            pt_str = f"({pt[0]:.4f}, {pt[1]:.4f}, {pt[2]:.4f})" if pt else "?"
+                            parts.append(f"obstacle {d['obstacle_id']} vs link {d['link_index']} "
+                                         f"[{d['link_name']}] dist={d['distance']:.4f}m at {pt_str}")
+                        first_reason = "Obstacle collision: " + "; ".join(parts)
+                    else:
+                        first_reason = "Obstacle collision detected"
+                continue
+
+            # This candidate passed all checks
+            log.debug(
+                "IK multi-solution: picked solution %d/%d for TCP=(%.4f, %.4f, %.4f)",
+                candidates.index(q) + 1, len(candidates), tcp.x, tcp.y, tcp.z,
+            )
+            return True, q, ""
+
+        return False, None, first_reason or "IK has no solution"
 
     def _search_orientation_cone(self, robot, tcp_xyz, original_rv,
                                   max_cone_angle, cone_step, qnear,
                                   margin, check_obstacle):
         """Sample orientations in a cone around the original rotation vector.
+
+        Delegates each candidate orientation to ``_try_full_validation``
+        which already handles multi-solution IK internally.
 
         Returns (q, adjusted_tcp) on first success, or None.
         """
@@ -357,8 +454,6 @@ class CollisionChecker:
             for az_i in range(n_azimuth):
                 azimuth = az_i * (2 * math.pi / n_azimuth)
 
-                # Build a small rotation that tilts by `tilt` at `azimuth`
-                # in the frame of the original orientation
                 axis = np.array([
                     math.sin(azimuth),
                     math.cos(azimuth),
@@ -373,22 +468,10 @@ class CollisionChecker:
                     float(rv[0]), float(rv[1]), float(rv[2]),
                 )
 
-                # Try IK
-                q = robot.get_inverse_kin(candidate_tcp, qnear=qnear)
-                if q is None:
-                    continue
-
-                # Check joint limits
-                ok, _ = self.check_joint_limits(q)
+                ok, q, _reason = self._try_full_validation(
+                    robot, candidate_tcp, qnear, margin, check_obstacle,
+                )
                 if not ok:
-                    continue
-
-                # Check collisions
-                q_arr = q.toList() if hasattr(q, 'toList') else list(q)
-                self.set_joint_angles(q_arr)
-                if self.has_self_collision():
-                    continue
-                if check_obstacle and self.has_obstacle_collision(margin):
                     continue
 
                 log.debug(

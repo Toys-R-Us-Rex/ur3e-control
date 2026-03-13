@@ -60,7 +60,7 @@ from URBasic.iscoin import ISCoin
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:
         print("Minimum 3 measure points.")
-        raise ValueError("You don't provide eanough world measure")
+        raise ValueError("You don't provide enough world measure")
 
     num_measure = len(world_measure)
     
@@ -226,7 +226,7 @@ def obj_to_stl(pts):
 def stl_to_obj(pts):
     """
     Convert from STL coordinates (Z-up) to OBJ coordinates (Y-up).
-    Mapping: STL(x, y, z) → OBJ(x, -z, y).
+    Mapping: STL(x, y, z) → OBJ(x, z, -y).
 
     Accepts:
         - a single point: (3,)
@@ -237,14 +237,14 @@ def stl_to_obj(pts):
     # Single point
     if pts.ndim == 1:
         x, y, z = pts
-        return np.array([x, -z, y])
+        return np.array([x, z, -y])
 
     # Multiple points (N, 3)
     if pts.ndim == 2 and pts.shape[1] == 3:
         x = pts[:, 0]
         y = pts[:, 1]
         z = pts[:, 2]
-        return np.column_stack([x, -z, y])
+        return np.column_stack([x, z, -y])
 
     raise ValueError("Input must be shape (3,) or (N,3)")
 

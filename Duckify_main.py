@@ -198,6 +198,7 @@ checker = CollisionChecker(
         'scale': [1, 1, 1],
         'position': [0, 0, 0],
         'orientation': [0, 0, 0, 1],
+        'exclude_links': [1, 2, 3, 4],
     }
 
     ],
@@ -387,7 +388,7 @@ for run_i, (trace_i, run_start, run_end, h_entry, h_exit, run_surface) in enumer
     print(f"\n  [{current_label}] → [{entry_label}]")
     print(f"    from {_fmt_tcp(current_tcp)}  to {_fmt_tcp(h_entry)}")
     try:
-        travel_wps = compute_positioning_motion(robot, checker, current_tcp, h_entry)
+        travel_wps, _ = compute_positioning_motion(robot, checker, current_tcp, h_entry)
         segments.append(Segment(
             motion_type=MotionType.TRAVEL,
             waypoints=travel_wps,
@@ -437,7 +438,7 @@ home_tcp = robot.get_fk(home)
 print(f"\n  [{current_label}] → [HOME]")
 print(f"    from {_fmt_tcp(current_tcp)}  to {_fmt_tcp(home_tcp)}")
 try:
-    travel_wps = compute_positioning_motion(robot, checker, current_tcp, home_tcp)
+    travel_wps, _ = compute_positioning_motion(robot, checker, current_tcp, home_tcp)
     segments.append(Segment(
         motion_type=MotionType.TRAVEL,
         waypoints=travel_wps,
