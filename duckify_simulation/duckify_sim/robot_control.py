@@ -38,13 +38,29 @@ from URBasic.waypoint6d import Joint6D, TCP6D, TCP6DDescriptor
 
 from .ros_bridge import read_joint_states, extract_6joints, publish_trajectory, estimate_duration
 from .kinematics import (
-    UR3E_DH, forward_kinematics, pose_to_matrix,
+    UR3E_DH, forward_kinematics, forward_kinematics_matrix,
+    matrix_to_tcp6d, pose_to_matrix,
     analytical_ik, select_closest_ik,
 )
+
+T_DELAY = 0.1
 
 
 class SimRobotControl:
     """Mirrors the robot_control interface from ISCoin (UrScriptExt)."""
+
+
+    def __init__(self):
+        self._tcp_offset = np.eye(4)  # no tool by default (identity)
+
+    def set_tcp(self, pose):
+        """Set the Tool Center Point offset (e.g. for a pen in the gripper).
+
+        Args:
+            pose: TCP6D offset from the flange to the tool tip.
+                  For a pen of length L along Z: TCP6D.createFromMetersRadians(0, 0, L, 0, 0, 0)
+        """
+        self._tcp_offset = pose_to_matrix(pose)
 
     # -- Read state ----------------------------------------------------------
 
@@ -62,10 +78,12 @@ class SimRobotControl:
         """Compute the current TCP pose using forward kinematics.
 
         Returns:
-            TCP6D with [x, y, z, rx, ry, rz].
+            TCP6D with [x, y, z, rx, ry, rz] (includes tool offset if set).
         """
         joints = self.get_actual_joint_positions(wait=wait)
-        return forward_kinematics(joints.toList())
+        T_flange = forward_kinematics_matrix(joints.toList())
+        T_tcp = T_flange @ self._tcp_offset
+        return matrix_to_tcp6d(T_tcp)
 
     def is_steady(self):
         """Check if the robot is not moving (all joint speeds near zero)."""
@@ -103,8 +121,10 @@ class SimRobotControl:
         print(f"movej sent (duration={duration_sec}s)")
 
         if wait:
-            time.sleep(duration_sec + 1)
-            return self._verify_position(joints)
+            return self._wait_until_motion_done(
+                target_joints=joints,
+                timeout_sec=max(5.0, float(duration_sec) + 10.0),
+            )
 
         return True
 
@@ -142,9 +162,11 @@ class SimRobotControl:
         print(f"movej_waypoints sent ({len(points)} points, total={cumulative_sec}s)")
 
         if wait:
-            time.sleep(cumulative_sec + 1)
             final_target = Joint6D.createFromRadians(*points[-1]["positions"])
-            return self._verify_position(final_target)
+            return self._wait_until_motion_done(
+                target_joints=final_target,
+                timeout_sec=max(5.0, float(cumulative_sec) + 10.0),
+            )
 
         return True
 
@@ -237,9 +259,11 @@ class SimRobotControl:
         print(f"movel_waypoints sent ({len(points)} points, total={cumulative_sec}s)")
 
         if wait:
-            time.sleep(cumulative_sec + 1)
             final_target = Joint6D.createFromRadians(*points[-1]["positions"])
-            return self._verify_position(final_target)
+            return self._wait_until_motion_done(
+                target_joints=final_target,
+                timeout_sec=max(5.0, float(cumulative_sec) + 10.0),
+            )
 
         return True
 
@@ -280,21 +304,24 @@ class SimRobotControl:
             q0 = np.array(self.get_actual_joint_positions().toList())
 
         T_desired = pose_to_matrix(pose)
-        solutions = analytical_ik(T_desired)
+        T_flange = T_desired @ np.linalg.inv(self._tcp_offset)
+        solutions = analytical_ik(T_flange)
 
         if solutions:
-            # Validate each solution with FK and keep only accurate ones
+            # Validate each solution with FK (applying tool offset) and keep only accurate ones
             valid = []
             target = np.array(pose.toList())
             for sol in solutions:
-                tcp_check = forward_kinematics(sol.tolist())
+                T_check = forward_kinematics_matrix(sol.tolist()) @ self._tcp_offset
+                tcp_check = matrix_to_tcp6d(T_check)
                 err_pos = np.sum((np.array(tcp_check.toList()[:3]) - target[:3]) ** 2)
                 if err_pos < 0.001:
                     valid.append(sol)
 
             best = select_closest_ik(valid if valid else solutions, q0)
             if best is not None:
-                tcp_check = forward_kinematics(best.tolist())
+                T_check = forward_kinematics_matrix(best.tolist()) @ self._tcp_offset
+                tcp_check = matrix_to_tcp6d(T_check)
                 err = np.sum((np.array(tcp_check.toList()[:3]) - np.array(pose.toList()[:3])) ** 2)
                 if err < 0.001:
                     return Joint6D.createFromRadians(*best.tolist())
@@ -313,6 +340,27 @@ class SimRobotControl:
         return None
 
     # -- Internal helpers ----------------------------------------------------
+
+    def _wait_until_motion_done(self, target_joints, timeout_sec=15.0, tolerance=0.05, poll_sec=0.1):
+        """Block until robot is steady and close to target, or timeout."""
+        deadline = time.time() + timeout_sec
+        time.sleep(T_DELAY)
+
+        while time.time() < deadline:
+            if self.is_steady() and self._is_within_tolerance(target_joints, tolerance=tolerance):
+                print("Movement OK — target reached")
+                return True
+            time.sleep(poll_sec)
+
+        print(f"WARNING: Motion timeout after {timeout_sec:.1f}s")
+        return self._verify_position(target_joints, tolerance=tolerance)
+
+    def _is_within_tolerance(self, target_joints, tolerance=0.05):
+        """Check target proximity without printing warnings."""
+        actual = self.get_actual_joint_positions()
+        target_list = target_joints.toList()
+        actual_list = actual.toList()
+        return all(abs(target_list[i] - actual_list[i]) <= tolerance for i in range(6))
 
     def _verify_position(self, target_joints, tolerance=0.05):
         """Check if the robot reached the target position.
