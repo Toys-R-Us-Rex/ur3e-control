@@ -3,7 +3,7 @@
 from src.logger import DataStore
 from src.calibration import Calibration
 from src.transformation import Transformation
-#from src.filtre import Filtre
+from src.filter import Filter
 #from src.conversion import Conversion
 #from src.pathfinding import Pathfinding
 from src.gazebo import Gazebo
@@ -57,6 +57,7 @@ def main():
 
     run_stage("Calibration", Calibration(ds, ROBOT_IP), ds, on_error="continue")
     run_stage("ComputeTransformation", Transformation(ds, ROBOT_IP, JSON_CALIBRATION), ds, on_error="stop")
+    run_stage("Filter", Filter(ds), ds, on_error="stop")
     #run_stage("Conversion", Conversion(ds, JSON_OBJECT), ds, on_error="stop")
     #run_stage("Pathfinding", Pathfinding(ds), ds, on_error="stop")
     run_stage("Gazebo", Gazebo(ds), ds, on_error="continue")
