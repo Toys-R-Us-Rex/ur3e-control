@@ -388,3 +388,35 @@ def get_inverse_kin(pose, qnear, tcp_offset=None, model_correction=None):
         return Joint6D.createFromRadians(*best.tolist())
 
     return None
+
+
+def get_all_ik_solutions(pose, tcp_offset=None, model_correction=None):
+    """Return ALL valid IK solutions for a TCP6D pose.
+
+    Same FK-validation as get_inverse_kin but returns every
+    passing solution instead of just the closest to qnear.
+
+    Returns list[Joint6D] (may be empty).
+    """
+    if tcp_offset is None:
+        tcp_offset = np.eye(4)
+    if model_correction is None:
+        model_correction = np.eye(4)
+
+    T_desired = pose_to_matrix(pose)
+    T_flange = T_desired @ np.linalg.inv(model_correction @ tcp_offset)
+    solutions = analytical_ik(T_flange)
+
+    if not solutions:
+        return []
+
+    target_pos = np.array([pose.x, pose.y, pose.z])
+    valid = []
+    for sol in solutions:
+        T_check = forward_kinematics_matrix(sol.tolist()) @ model_correction @ tcp_offset
+        check_pos = np.array([T_check[0, 3], T_check[1, 3], T_check[2, 3]])
+        err_pos = np.sum((check_pos - target_pos) ** 2)
+        if err_pos < 0.001:
+            valid.append(Joint6D.createFromRadians(*sol.tolist()))
+
+    return valid

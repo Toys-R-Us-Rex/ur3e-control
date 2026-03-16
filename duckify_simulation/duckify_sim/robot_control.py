@@ -140,7 +140,7 @@ class SimRobotControl:
         positions = joints.toList()
 
         if t > 0:
-            duration_sec = int(math.ceil(t))
+            duration_sec = t
         else:
             duration_sec = estimate_duration(v)
 
@@ -176,7 +176,7 @@ class SimRobotControl:
             t_param = wp_dict["t"]
 
             if t_param > 0:
-                duration = int(math.ceil(t_param))
+                duration = t_param
             else:
                 duration = estimate_duration(v)
 
@@ -227,7 +227,7 @@ class SimRobotControl:
             dy = pose.y - current_tcp.y
             dz = pose.z - current_tcp.z
             dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-            duration = max(2, int(math.ceil(dist / v)))
+            duration = max(0.3, dist / v)
 
         return self.movej(target_joints, t=duration, wait=wait)
 
@@ -270,7 +270,7 @@ class SimRobotControl:
                 dy = pose.y - prev_tcp.y
                 dz = pose.z - prev_tcp.z
                 dist = math.sqrt(dx*dx + dy*dy + dz*dz)
-                duration = max(2, int(math.ceil(dist / v)))
+                duration = max(0.3, dist / v)
 
             cumulative_sec += duration
             points.append({

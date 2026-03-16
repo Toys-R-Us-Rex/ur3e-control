@@ -15,23 +15,7 @@ log = logging.getLogger(__name__)
 
 
 def find_path(robot, checker, A_tcp, B_tcp, depth=0, qnear=None):
-    """Recursively find a collision-free TCP path from A to B.
 
-    Algorithm:
-      1. Try direct A→B segment.
-      2. If it fails, compute the SLERP midpoint and lift it +Z until safe.
-      3. Recurse on A→mid and mid→B.
-
-    Parameters
-    ----------
-    robot : robot controller (provides get_inverse_kin).
-    checker : CollisionChecker with validate_tcp / validate_path.
-    A_tcp, B_tcp : TCP6D — start and end poses.
-    depth : current recursion depth.
-    qnear : Joint6D or list — IK seed for consistent solutions.
-
-    Returns list[TCP6D] waypoints from A to B (inclusive).
-    """
     if qnear is None:
         q = robot.get_inverse_kin(A_tcp)
         if q is not None:
@@ -66,14 +50,7 @@ def find_path(robot, checker, A_tcp, B_tcp, depth=0, qnear=None):
 
 
 def lift_midpoint(robot, checker, A_tcp, B_tcp, qnear=None):
-    """Compute midpoint of A→B and lift it upward (+Z) until it validates.
 
-    Uses SLERP for rotation interpolation so that averaging rotation
-    vectors like ry ≈ -2.27 and ry ≈ +2.26 gives ry ≈ π (tool-down),
-    not ry ≈ 0 (tool-up).
-
-    Returns a TCP6D at the lifted midpoint position.
-    """
     from URBasic import TCP6D
 
     a_pos = np.array([A_tcp.x, A_tcp.y, A_tcp.z])

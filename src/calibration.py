@@ -52,6 +52,14 @@ from URBasic import TCP6D
 from URBasic import UrScript
 from URBasic import ISCoin
 
+def setup_robot(tcps):
+    from duckify_simulation.duckify_sim.robot_control import SimRobotControl
+    robot = SimRobotControl()
+    tcp_offset = get_tcp_offset(tcps)
+    robot.set_tcp(tcp_offset)
+    return robot
+
+
 def collect_data(robot_arm: UrScript, num_measure:int = 20):
     """
     Interactively collect multiple TCP poses while the robot is in freedrive mode.

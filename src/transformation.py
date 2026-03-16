@@ -54,13 +54,14 @@ import numpy as np
 
 from src.utils import *
 from src.logger import LoggingLog
+from src.config import OBJ2ROBOT_RZ_DEG, OBJ2ROBOT_TRANSLATION, OBJ2ROBOT_SCALE
 
 from URBasic.iscoin import ISCoin
 
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:
         print("Minimum 3 measure points.")
-        raise ValueError("You don't provide eanough world measure")
+        raise ValueError("You don't provide enough world measure")
 
     num_measure = len(world_measure)
     
@@ -143,15 +144,8 @@ def create_transformation(A, B):
     return AtoB
 
 
-def build_manual_transform(rz_deg=45.0, translation=(0, -0.2, 0.1), scale=0.001):
-    """Build obj2robot callable from manual rz rotation + translation.
-
-    Parameters
-    ----------
-    rz_deg : float — rotation around Z axis in degrees.
-    translation : 3-tuple — (tx, ty, tz) in meters (robot frame).
-    scale : float — uniform scale factor (default 0.001 for mm→m).
-    """
+# creates a 4D homogenous matrice based on translation vector and angles given manually
+def build_manual_transform(rz_deg=OBJ2ROBOT_RZ_DEG, translation=OBJ2ROBOT_TRANSLATION, scale=OBJ2ROBOT_SCALE):
     from scipy.spatial.transform import Rotation as Rot
 
     rz_rad = np.radians(rz_deg)
@@ -161,7 +155,7 @@ def build_manual_transform(rz_deg=45.0, translation=(0, -0.2, 0.1), scale=0.001)
     T[:3, :3] = R
     T[:3, 3] = translation
 
-    # Normal transform: inverse-transpose of R (scale cancels after normalization)
+    # Normal transform: inverse-transpose of R
     R_pure = R / scale
     R_normal = np.linalg.inv(R_pure).T
     T_normal = np.eye(4)
@@ -180,6 +174,33 @@ def build_manual_transform(rz_deg=45.0, translation=(0, -0.2, 0.1), scale=0.001)
     obj2robot.T_normal = T_normal
     return obj2robot
 
+
+# gets the position, quaternion , scale from obj2robot so that pybullet can place the STL mesh in the space
+def extract_pybullet_pose(obj2robot):
+    from scipy.spatial.transform import Rotation as Rot
+    T = obj2robot.T
+    pos = T[:3, 3].tolist()
+    R = T[:3, :3]
+    scale = np.linalg.norm(R[:, 0])
+    U, _, Vt = np.linalg.svd(R)
+    R_pure = U @ Vt
+    if np.linalg.det(R_pure) < 0:
+        U[:, -1] *= -1
+        R_pure = U @ Vt
+    quat = Rot.from_matrix(R_pure).as_quat().tolist()
+    return pos, quat, scale
+
+# gets the transform data from the pickle files.
+def load_obj2robot(record, rz_deg=OBJ2ROBOT_RZ_DEG):
+    T_loaded, _ = record.load_transformation()
+    if T_loaded is not None:
+        translation = tuple(T_loaded[:3, 3])
+    else:
+        translation = OBJ2ROBOT_TRANSLATION
+    return build_manual_transform(rz_deg=rz_deg, translation=translation)
+
+
+# converts 2 tcp poses into a single resulting vector ( used for hover calculation )
 def tcp_trans(tcp1, tcp2):
     # Décomposition
     p1 = np.array(tcp1[:3])
@@ -197,6 +218,8 @@ def tcp_trans(tcp1, tcp2):
     r_new = rotmat_to_rotvec(R_new)
 
     return np.concatenate([p_new, r_new])
+
+
 
 def obj_to_stl(pts):
     """
@@ -226,7 +249,7 @@ def obj_to_stl(pts):
 def stl_to_obj(pts):
     """
     Convert from STL coordinates (Z-up) to OBJ coordinates (Y-up).
-    Mapping: STL(x, y, z) → OBJ(x, -z, y).
+    Mapping: STL(x, y, z) → OBJ(x, z, -y).
 
     Accepts:
         - a single point: (3,)
@@ -237,14 +260,14 @@ def stl_to_obj(pts):
     # Single point
     if pts.ndim == 1:
         x, y, z = pts
-        return np.array([x, -z, y])
+        return np.array([x, z, -y])
 
     # Multiple points (N, 3)
     if pts.ndim == 2 and pts.shape[1] == 3:
         x = pts[:, 0]
         y = pts[:, 1]
         z = pts[:, 2]
-        return np.column_stack([x, -z, y])
+        return np.column_stack([x, z, -y])
 
     raise ValueError("Input must be shape (3,) or (N,3)")
 
