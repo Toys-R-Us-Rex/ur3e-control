@@ -21,7 +21,7 @@ def execute_drawing_plan(robot, segments, home_joints=None):
     Parameters
     ----------
     robot : robot controller (movel, movel_waypoints, movej).
-    segments : list[Segment] — fully pre-computed drawing plan from build_drawing_plan().
+    segments : list[Segment] — fully pre-computed drawing plan from plan_drawing().
     home_joints : Joint6D — if given, movej to home before starting.
     """
     from URBasic import TCP6DDescriptor

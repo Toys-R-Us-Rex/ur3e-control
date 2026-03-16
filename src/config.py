@@ -5,40 +5,85 @@ Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 '''
 
 # Pathfinding parameters
-SAFE_MARGIN = 0.005    # meters — min clearance from mesh
-PUSH_STEP   = 0.005    # meters — midpoint push increment
-MAX_DEPTH   = 10       # max recursion depth
-MAX_PUSH    = 0.05     # meters — max total push before giving up
-SURFACE_MARGIN = 0.01  # meters — clearance above mesh surface
+SAFE_MARGIN = 0.005
+PUSH_STEP   = 0.005    # midpoint push increment
+MAX_DEPTH   = 10
+MAX_PUSH    = 0.05
+SURFACE_MARGIN = 0.01  # above mesh surface
 
 # Free-space travel constraints
-TCP_Y_MAX        = 0.0      # meters — TCP must stay at Y ≤ 0
-TCP_Z_MIN        = 0.0      # meters — TCP must stay at Z ≥ 0
-TCP_Z_MAX        = 0.5      # meters — TCP must stay at Z ≤ 0.5
-LINK_Z_MIN       = {        # per-link Z minimum (meters) — links not listed are unconstrained
-    3: 0.10,                 # upper_arm_link — must stay above 10 cm
-    4: 0.10,                 # forearm_link   — must stay above 10 cm
+TCP_Y_MAX        = 0.0      # TCP must stay at Y ≤ 0
+TCP_Z_MIN        = 0.0      # TCP must stay at Z ≥ 0
+TCP_Z_MAX        = 0.5      # TCP must stay at Z ≤ 0.5
+LINK_Z_MIN       = {
+    3: 0.10,                 # upper_arm_link must stay above 10 cm
+    4: 0.10,                 # forearm_link must stay above 10 cm
 }
 UR3E_MAX_REACH   = None      # disabled — IK solver handles reachability
 FREE_TRAVEL_STEP = 0.005    # meters — interpolation density for path validation
 
-# Joint safe operating ranges (radians) — None means no limit
-# UR3e hardware limits are ±2π for all joints.  We rely on
-# self-collision detection rather than tight software limits.
 JOINT_LIMITS = [
-    None,              # shoulder_pan — no limit
-    None,              # shoulder_lift — no limit (self-collision covers it)
-    None,              # elbow — no limit (self-collision covers it)
-    None,              # wrist_1 — no limit
-    None,              # wrist_2 — no limit
-    None,              # wrist_3 — no limit
+    None,              # shoulder_pan
+    None,              # shoulder_lift
+    None,              # elbow
+    None,              # wrist_1
+    None,              # wrist_2
+    None,              # wrist_3
 ]
 
 # Motion parameters
-DRAW_V = 0.1           # m/s — drawing velocity
-DRAW_A = 0.5           # m/s² — drawing acceleration
-APPROACH_V = 0.1       # m/s — pen-down / pen-up velocity
-APPROACH_A = 0.5       # m/s² — pen-down / pen-up acceleration
-TRAVEL_V = 0.25        # m/s — free-space travel velocity
-TRAVEL_A = 1.2         # m/s² — free-space travel acceleration
-HOVER_OFFSET = [0, 0, -0.01, 0, 0, 0]  # TCP-local offset for hover above surface
+DRAW_V = 0.1
+DRAW_A = 0.5
+APPROACH_V = 0.1
+APPROACH_A = 0.5
+TRAVEL_V = 0.25
+TRAVEL_A = 1.2
+HOVER_OFFSET = [0, 0, -0.01, 0, 0, 0]
+
+# Calibration points, used as default
+TCPS_20 = [
+    [0.09923226380963619, -0.3936237333456494, 0.2241707102377116, 0.576534502783353, -2.801623474567781, -0.4841337776020336],
+    [-0.05415645689244093, -0.3953984087553033, 0.21928851997659993, 0.23402931706237418, 2.778033572687844, 0.45840199634357587],
+    [-0.054524138620445695, -0.39546163267180845, 0.2194560899784096, 0.2335390262119786, 2.783785824873644, 0.4510348107203675],
+    [0.0752223292033933, -0.40520983496228175, 0.2260599738507684, 0.4572457692623414, -2.9109062545914886, -0.5364679269112991],
+    [0.0829983763105315, -0.3145440306229818, 0.23651078628355368, 0.3951666302237936, -2.8778640875293946, 0.020826760853426392],
+    [0.17537792453011916, -0.27966304416915055, 0.1871802429879547, 0.4399208472865239, -2.4166507384311493, 0.11158336986030104],
+    [-0.11994350407194002, -0.2833976738613014, 0.18952203929656486, -0.11587882239515394, 2.488783491737581, -0.2874871978684851],
+    [0.042587583213620814, -0.42502159418902, 0.2219296443030877, -1.819892078036102, 2.2285954928177354, 0.5297978049692356],
+    [0.04244370933942005, -0.42547028481239557, 0.22238439939526014, -1.8232450157901965, 2.2322450410810823, 0.5277815763416596],
+    [0.020874413390515264, -0.34192399335641094, 0.2416659479631329, -1.6019421625827266, 2.6368378551232445, 0.06821140243218453],
+    [0.020803283214023204, -0.3418580959196876, 0.24363220771625155, -1.6034030755162376, 2.6412352323485133, 0.06264503078869965],
+    [-0.0790726920318296, -0.26904313811943686, 0.21128926726360914, -1.5548308665720385, 2.3598614347530305, -0.6531326432466081],
+    [0.0427270175708247, -0.2473905824164213, 0.2299557666201055, 2.1997240823524864, -1.7930464879794845, 0.21897511307224746],
+    [0.13236126549367827, -0.37709210594126424, 0.2134888319694367, 2.113428037038218, -2.0042534442643, -0.709899151721018],
+    [0.053381366331223756, -0.3159752956877128, 0.24229245067174737, 1.8209996559857016, -2.4222938552259685, -0.050512659771693856],
+    [-0.049955483412195634, -0.41217334754184276, 0.21506155931685994, -1.6191731898646298, 2.109641966964828, 0.12393449118187727],
+    [0.11965373370731985, -0.426189467377058, 0.20111114739956754, -2.3836120944741555, 1.6242241381287574, 0.8568802013152502],
+    [0.1072294696915219, -0.2674062588065899, 0.22084409245177472, 2.144447557404073, -1.698541221842688, -0.16060169509460684],
+    [-0.10731169114667957, -0.19413670798855612, 0.15654354818487162, 2.3277646358217945, -1.2822755883172325, 1.191980512607587],
+    [0.020926595559954138, -0.3139355562333332, 0.24095599082082952, 3.0691506381776072, -0.3992164073191759, 0.04457895483726155],
+]
+
+# Default object-to-robot transform parameters
+OBJ2ROBOT_RZ_DEG       = 0.0
+OBJ2ROBOT_TRANSLATION  = (0.32, -0.4, 0.155)
+OBJ2ROBOT_SCALE        = 0.001          # mm → meters
+
+# Scene for pybullet collision testing
+OBSTACLE_STLS = [
+    {
+        'path': 'duckify_simulation/3d_objects/duck_uv.stl',
+        'scale': [0.001, 0.001, 0.001],
+    },
+    {
+        'path': 'duckify_simulation/3d_objects/workspace.stl',
+        'scale': [1, 1, 1],
+        'position': [0, 0, 0],
+        'orientation': [0, 0, 0, 1],
+        'exclude_links': [1, 2, 3, 4],
+    },
+    {
+        'path': 'duckify_simulation/3d_objects/support_duck_simulation.stl',
+        'scale': [0.001, 0.001, 0.001],
+    },
+]

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, call
 
 from src.pathfinding import find_path, lift_midpoint
 from src.computation import (
-    build_drawing_plan, compute_drawing_plan,
+    plan_drawing, load_and_plan,
     _split_into_runs, _validate_surface_points, _hover_tcp,
 )
 
@@ -147,7 +147,7 @@ class TestSplitIntoRuns:
         assert _split_into_runs([]) == []
 
 
-# ── build_drawing_plan draw validation ────────────────────────────────
+# ── plan_drawing draw validation ────────────────────────────────
 
 def _make_trace():
     """Return a minimal v2 trace dict with two path points (per-point normals)."""
@@ -161,8 +161,10 @@ def _make_trace():
 
 
 def _identity_obj2robot(p):
-    """Pass-through transformation (6-tuple in, 6-tuple out)."""
     return tuple(p)
+
+_identity_obj2robot.T = np.eye(4)
+_identity_obj2robot.T_normal = np.eye(4)
 
 
 class TestDrawValidation:
@@ -172,7 +174,7 @@ class TestDrawValidation:
         start = FakeTCP6D(0.0, 0.0, 0.3)
         robot.get_fk.return_value = start
 
-        segments, report = build_drawing_plan(
+        segments, report = plan_drawing(
             robot, clear_checker, traces, _identity_obj2robot,
             start_tcp=start, max_pts=2,
         )
@@ -205,7 +207,7 @@ class TestDrawValidation:
         }
         start = FakeTCP6D(0.0, 0.0, 0.3)
 
-        segments, report = build_drawing_plan(
+        segments, report = plan_drawing(
             robot, checker, [trace], _identity_obj2robot,
             start_tcp=start,
         )
@@ -243,7 +245,7 @@ class TestSkipUnreachable:
         }
         start = FakeTCP6D(0.0, 0.0, 0.3)
 
-        segments, report = build_drawing_plan(
+        segments, report = plan_drawing(
             robot, checker, [trace], _identity_obj2robot,
             start_tcp=start,
         )
@@ -280,7 +282,7 @@ class TestSkipUnreachable:
         }
         start = FakeTCP6D(0.0, 0.0, 0.3)
 
-        segments, report = build_drawing_plan(
+        segments, report = plan_drawing(
             robot, checker, [trace], _identity_obj2robot,
             start_tcp=start,
         )
@@ -294,13 +296,13 @@ class TestSkipUnreachable:
         assert len(draw_segments[1].waypoints) == 1
 
 
-# ── compute_drawing_plan (JSON → segments) ───────────────────────────
+# ── load_and_plan (JSON → segments) ───────────────────────────
 
 class TestComputeDrawingPlan:
     def test_v1_json_normalizes_and_produces_segments(
         self, robot, clear_checker, tmp_path,
     ):
-        """Write a v1 JSON, call compute_drawing_plan, verify segments."""
+        """Write a v1 JSON, call load_and_plan, verify segments."""
         import json
 
         v1_data = {
@@ -317,7 +319,7 @@ class TestComputeDrawingPlan:
         start = FakeTCP6D(0.0, 0.0, 0.3)
         robot.get_fk.return_value = start
 
-        segments, report = compute_drawing_plan(
+        segments, report = load_and_plan(
             robot, clear_checker, str(json_file), _identity_obj2robot,
             start_tcp=start, max_pts=2,
         )
@@ -351,7 +353,7 @@ class TestComputeDrawingPlan:
         start = FakeTCP6D(0.0, 0.0, 0.3)
         robot.get_fk.return_value = start
 
-        segments, report = compute_drawing_plan(
+        segments, report = load_and_plan(
             robot, clear_checker, str(json_file), _identity_obj2robot,
             start_tcp=start, max_pts=2,
         )

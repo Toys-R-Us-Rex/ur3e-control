@@ -170,3 +170,7 @@ def pose_to_T(pose):
     T[:3, :3] = R
     T[:3, 3] = [x, y, z]
     return T
+
+
+def fmt_tcp(tcp):
+    return f"({tcp.x:.4f}, {tcp.y:.4f}, {tcp.z:.4f})"
