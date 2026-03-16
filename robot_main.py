@@ -57,7 +57,7 @@ def main():
 
     run_stage("Calibration", Calibration(ds, ROBOT_IP), ds, on_error="continue")
     run_stage("ComputeTransformation", Transformation(ds, ROBOT_IP, JSON_CALIBRATION), ds, on_error="stop")
-    run_stage("Filter", Filter(ds), ds, on_error="stop")
+    run_stage("Filter", Filter(ds, JSON_OBJECT), ds, on_error="stop")
     #run_stage("Conversion", Conversion(ds, JSON_OBJECT), ds, on_error="stop")
     #run_stage("Pathfinding", Pathfinding(ds), ds, on_error="stop")
     run_stage("Gazebo", Gazebo(ds), ds, on_error="continue")

@@ -8,7 +8,7 @@ import logging
 
 import numpy as np
 
-from segment import Segment, MotionType
+from src.segment import Segment, MotionType
 from src.config import (
     DRAW_V, DRAW_A, APPROACH_V, APPROACH_A, TRAVEL_V, TRAVEL_A,
     HOVER_OFFSET,

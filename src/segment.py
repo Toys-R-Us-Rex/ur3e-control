@@ -12,10 +12,6 @@ class SideType(Enum):
     RIGHT = auto()
     LEFT = auto()
 
-class PointNormal():
-    point: list  # position in list of dimension
-    normal: list # normal in list of dimension
-
 @dataclass
 class Segment:
     color: int

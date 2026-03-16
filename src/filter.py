@@ -1,20 +1,19 @@
 from src.logger import DataStore
-from segment import PointNormal, TraceSegment, SideType
+from src.segment import TraceSegment, SideType
+from src.computation import load_traces
 
 class Filter:
-    def __init__(self, dataStore: DataStore):
+    def __init__(self, dataStore: DataStore, json_path):
         self.ds = dataStore
+        self.json_path = json_path
 
     def run(self):
-        self.filter_traces(self.ds)
-
-    def filter_traces(self, ds):
         """
         Splits traces into left and right sides based on average Y-coordinate of points.
         Assumes traces have 'path' as list of [point, normal], where point is [x, y, z].
         Adjust the axis/threshold if the duck is oriented differently (e.g., use X or Z).
         """
-        traces, _ = ds.load_traces()
+        traces, _ = load_traces(self.json_path)
         left_traces = []
         right_traces = []
         for trace in traces:
@@ -34,4 +33,4 @@ class Filter:
                 )
             break
 
-        return left_traces, right_traces
+        self.ds.save_trace_segment(left_traces+right_traces)
