@@ -5,59 +5,30 @@ Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 '''
 
 import logging
-from dataclasses import dataclass, field
-from enum import Enum, auto
 
 import numpy as np
 
+from src.segment import Segment, MotionType
 from src.config import (
     DRAW_V, DRAW_A, APPROACH_V, APPROACH_A, TRAVEL_V, TRAVEL_A,
     HOVER_OFFSET,
 )
-from src.transformation import obj_to_stl, tcp_trans
-from src.utils import normal_to_rotvec
+from src.utils import *
 
 log = logging.getLogger(__name__)
 
+def compute_draw_motion(trace, obj2robot, hover_offset=None, max_pts=None):
+    from URBasic import TCP6D
 
-class MotionType(Enum):
-    TRAVEL = auto()      # free-space collision-avoidant move
-    APPROACH = auto()    # pen-down / pen-up (hover ↔ surface)
-    DRAW = auto()        # on-surface stroke
+    if hover_offset is None:
+        hover_offset = HOVER_OFFSET
 
-
-@dataclass
-class Segment:
-    motion_type: MotionType
-    waypoints: list      # list[TCP6D]
-    v: float             # velocity m/s
-    a: float             # acceleration m/s²
-    r: float = 0.0       # blend radius
-    joint_waypoints: list | None = None  # optional pre-computed Joint6D list
-
-
-def trace_to_points(trace, max_pts=None):
     path = trace["path"]
     if max_pts is not None:
         path = path[:max_pts]
     points = np.array([entry[0] for entry in path])
     normals = np.array([entry[1] for entry in path])
     return points, normals
-
-
-def transform_to_robot_frame(points, normals, obj2robot):
-    T = obj2robot.T
-    R_normal = obj2robot.T_normal[:3, :3]
-
-    ones = np.ones((len(points), 1))
-    points_h = np.hstack([points, ones])
-    points_robot = (T @ points_h.T).T[:, :3]
-
-    normals_robot = (R_normal @ normals.T).T
-    norms = np.linalg.norm(normals_robot, axis=1, keepdims=True)
-    normals_robot = normals_robot / norms
-
-    return points_robot, normals_robot
 
 
 def points_to_tcps(points_robot, normals_robot):
@@ -69,12 +40,21 @@ def points_to_tcps(points_robot, normals_robot):
         tcps.append(TCP6D.createFromMetersRadians(pt[0], pt[1], pt[2], rv[0], rv[1], rv[2]))
     return tcps
 
-
 def trace_to_tcp(trace, obj2robot, max_pts=None):
-    points, normals = trace_to_points(trace, max_pts=max_pts)
-    points_robot, normals_robot = transform_to_robot_frame(points, normals, obj2robot)
-    return points_to_tcps(points_robot, normals_robot)
+    from URBasic import TCP6D
 
+    path = trace["path"]
+    if max_pts is not None:
+        path = path[:max_pts]
+
+    surface_tcps = []
+    for entry in path:
+        position_obj, normal_obj = entry[0], entry[1]
+        robot_pose = obj2robot((*np.array(position_obj), *np.array(normal_obj)))
+        x, y, z, rx, ry, rz = robot_pose
+        surface_tcps.append(TCP6D.createFromMetersRadians(x, y, z, rx, ry, rz))
+
+    return surface_tcps
 
 def compute_positioning_motion(robot, checker, start_tcp, end_tcp):
     from src.pathfinding import find_path

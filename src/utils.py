@@ -174,3 +174,73 @@ def pose_to_T(pose):
 
 def fmt_tcp(tcp):
     return f"({tcp.x:.4f}, {tcp.y:.4f}, {tcp.z:.4f})"
+
+
+def tcp_trans(tcp1, tcp2):
+    # Décomposition
+    p1 = np.array(tcp1[:3])
+    r1 = np.array(tcp1[3:])
+    p2 = np.array(tcp2[:3])
+    r2 = np.array(tcp2[3:])
+
+    # Matrices de rotation
+    R1 = rotvec_to_rotmat(r1)
+    R2 = rotvec_to_rotmat(r2)
+
+    # Composition
+    p_new = p1 + R1 @ p2
+    R_new = R1 @ R2
+    r_new = rotmat_to_rotvec(R_new)
+
+    return np.concatenate([p_new, r_new])
+
+
+def obj_to_stl(pts):
+    """
+    Convert from OBJ coords (Y-up) to STL coords (Z-up).
+    Mapping: OBJ(x, y, z) → STL(x, -z, y).
+
+    Accepts:
+        - a single point: (3,)
+        - a list of points: (N, 3)
+    """
+    pts = np.asarray(pts)
+
+    # Single point
+    if pts.ndim == 1:
+        x, y, z = pts
+        return np.array([x, -z, y])
+
+    # Multiple points (N, 3)
+    if pts.ndim == 2 and pts.shape[1] == 3:
+        x = pts[:, 0]
+        y = pts[:, 1]
+        z = pts[:, 2]
+        return np.column_stack([x, -z, y])
+
+    raise ValueError("Input must be shape (3,) or (N,3)")
+
+def stl_to_obj(pts):
+    """
+    Convert from STL coordinates (Z-up) to OBJ coordinates (Y-up).
+    Mapping: STL(x, y, z) → OBJ(x, z, -y).
+
+    Accepts:
+        - a single point: (3,)
+        - a list of points: (N, 3)
+    """
+    pts = np.asarray(pts)
+
+    # Single point
+    if pts.ndim == 1:
+        x, y, z = pts
+        return np.array([x, z, -y])
+
+    # Multiple points (N, 3)
+    if pts.ndim == 2 and pts.shape[1] == 3:
+        x = pts[:, 0]
+        y = pts[:, 1]
+        z = pts[:, 2]
+        return np.column_stack([x, z, -y])
+
+    raise ValueError("Input must be shape (3,) or (N,3)")

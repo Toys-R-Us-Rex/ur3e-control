@@ -52,11 +52,35 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 import json
 import numpy as np
 
+from src.config import *
 from src.utils import *
-from src.logger import LoggingLog
-from src.config import OBJ2ROBOT_RZ_DEG, OBJ2ROBOT_TRANSLATION, OBJ2ROBOT_SCALE
+from src.logger import DataStore
 
 from URBasic.iscoin import ISCoin
+
+class AtoB:
+    def __init__(self, T_position, T_orientation):
+        self.T_position = T_position
+        self.T_orientation = T_orientation
+    
+    def __call__(self, p):
+        p = np.asarray(p)
+        point = p[:3]
+        normal = p[3:]
+
+        # Transform point
+        p_h = np.array([*point, 1.0])
+        p_new = self.T_position @ p_h
+
+        # Transform normal
+        n_h = np.array([*normal, 1.0])
+        n_new = (self.T_orientation @ n_h)[:3]
+        n_new /= np.linalg.norm(n_new)
+
+        r_new = normal_to_rotvec(n_new)
+
+        return [*p_new[:3], *r_new]
+        
 
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:
@@ -96,7 +120,7 @@ def collect_data(robot_arm, world_measure):
 
     return np.array(tcps)
 
-def create_transformation(A, B):
+def create_transformation(A, B) -> AtoB:
     A = np.asarray(A)[:, :3]
     B = np.asarray(B)[:, :3]
     assert A.shape == B.shape
@@ -122,26 +146,7 @@ def create_transformation(A, B):
     T_normal = np.eye(4)
     T_normal[:3, :3] = R_normal
 
-    def AtoB(p):
-        p = np.asarray(p)
-        point = p[:3]
-        normal = p[3:]
-        # Transform point
-        p_new = T @ [*point, 1]
-
-        # Transform normal (4×4 homogeneous, extract xyz before normalizing)
-        nx,ny,nz = normal
-        n_new = (T_normal @ [nx,ny,nz, 1])[:3]
-        n_new /= np.linalg.norm(n_new)
-        r_new = normal_to_rotvec(n_new)
-
-        return [*p_new[:3], *r_new]
-
-    # Expose 4×4 matrices as attributes for inspection/composition
-    AtoB.T = T
-    AtoB.T_normal = T_normal
-
-    return AtoB
+    return AtoB(T, T_normal)
 
 
 # creates a 4D homogenous matrice based on translation vector and angles given manually
@@ -175,123 +180,42 @@ def build_manual_transform(rz_deg=OBJ2ROBOT_RZ_DEG, translation=OBJ2ROBOT_TRANSL
     return obj2robot
 
 
-# gets the position, quaternion , scale from obj2robot so that pybullet can place the STL mesh in the space
-def extract_pybullet_pose(obj2robot):
-    from scipy.spatial.transform import Rotation as Rot
-    T = obj2robot.T
-    pos = T[:3, 3].tolist()
-    R = T[:3, :3]
-    scale = np.linalg.norm(R[:, 0])
-    U, _, Vt = np.linalg.svd(R)
-    R_pure = U @ Vt
-    if np.linalg.det(R_pure) < 0:
-        U[:, -1] *= -1
-        R_pure = U @ Vt
-    quat = Rot.from_matrix(R_pure).as_quat().tolist()
-    return pos, quat, scale
-
-# gets the transform data from the pickle files.
-def load_obj2robot(record, rz_deg=OBJ2ROBOT_RZ_DEG):
-    T_loaded, _ = record.load_transformation()
-    if T_loaded is not None:
-        translation = tuple(T_loaded[:3, 3])
-    else:
-        translation = OBJ2ROBOT_TRANSLATION
-    return build_manual_transform(rz_deg=rz_deg, translation=translation)
-
-
-# converts 2 tcp poses into a single resulting vector ( used for hover calculation )
-def tcp_trans(tcp1, tcp2):
-    # Décomposition
-    p1 = np.array(tcp1[:3])
-    r1 = np.array(tcp1[3:])
-    p2 = np.array(tcp2[:3])
-    r2 = np.array(tcp2[3:])
-
-    # Matrices de rotation
-    R1 = rotvec_to_rotmat(r1)
-    R2 = rotvec_to_rotmat(r2)
-
-    # Composition
-    p_new = p1 + R1 @ p2
-    R_new = R1 @ R2
-    r_new = rotmat_to_rotvec(R_new)
-
-    return np.concatenate([p_new, r_new])
-
-
-
-def obj_to_stl(pts):
-    """
-    Convert from OBJ coords (Y-up) to STL coords (Z-up).
-    Mapping: OBJ(x, y, z) → STL(x, -z, y).
-
-    Accepts:
-        - a single point: (3,)
-        - a list of points: (N, 3)
-    """
-    pts = np.asarray(pts)
-
-    # Single point
-    if pts.ndim == 1:
-        x, y, z = pts
-        return np.array([x, -z, y])
-
-    # Multiple points (N, 3)
-    if pts.ndim == 2 and pts.shape[1] == 3:
-        x = pts[:, 0]
-        y = pts[:, 1]
-        z = pts[:, 2]
-        return np.column_stack([x, -z, y])
-
-    raise ValueError("Input must be shape (3,) or (N,3)")
-
-def stl_to_obj(pts):
-    """
-    Convert from STL coordinates (Z-up) to OBJ coordinates (Y-up).
-    Mapping: STL(x, y, z) → OBJ(x, z, -y).
-
-    Accepts:
-        - a single point: (3,)
-        - a list of points: (N, 3)
-    """
-    pts = np.asarray(pts)
-
-    # Single point
-    if pts.ndim == 1:
-        x, y, z = pts
-        return np.array([x, z, -y])
-
-    # Multiple points (N, 3)
-    if pts.ndim == 2 and pts.shape[1] == 3:
-        x = pts[:, 0]
-        y = pts[:, 1]
-        z = pts[:, 2]
-        return np.column_stack([x, z, -y])
-
-    raise ValueError("Input must be shape (3,) or (N,3)")
-
-
-def launch_transformation(robot_ip, file_path, log: LoggingLog):
+def launch_transformation(robot_ip, file_path, ds: DataStore):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         
         iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
+        _, tcp_offset = ds.load_calibration()
+        iscoin.robot_control.set_tcp(tcp_offset)
 
         p_world = np.array(data["calibration"])
         p_tcps = collect_data(iscoin.robot_control, p_world)
 
-        log.save_worldtcp(p_world, p_tcps)
-        log.log_worldtcp(p_world,p_tcps)
+        ds.save_worldtcp(p_world, p_tcps)
+        ds.log_worldtcp(p_world,p_tcps)
 
         obj2robot = create_transformation(p_world, p_tcps)
 
-        log.save_transformation(obj2robot)
-        log.log_transformation(obj2robot)
+        ds.save_transformation(obj2robot)
+        ds.log_transformation(obj2robot)
 
-        iscoin.close()
-        return True
     except Exception as e:
-        log.log(f"Transforamtion skipped: {e}")
-        return False
+        ds.log(f"Transforamtion skipped: {e}")
+        raise
+
+class Transformation:
+    def __init__(self, datastore: DataStore, robot_ip: str, json_calibration: str):
+        self.ds = datastore
+        self.robot_ip = robot_ip
+        self.json_calibration = json_calibration
+
+    def run(self):
+        while True:
+            answer = input("Do you have the transformation already saved? y/n \n")
+            if answer == "y":
+                return
+            
+            answer = input("Do you want to run a robot transformation? y/n \n")
+            if answer == "y":
+                launch_transformation(self.robot_ip, self.json_calibration, self.ds)

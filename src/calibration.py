@@ -46,7 +46,7 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 import numpy as np
 
 from src.utils import *
-from src.logger import LoggingLog
+from src.logger import DataStore
 
 from URBasic import TCP6D
 from URBasic import UrScript
@@ -278,19 +278,54 @@ def validate_calibration(robot_arm: UrScript, rot=0.2):
     return motion
 
 
-
-def launch_calibration(robot_ip, log: LoggingLog):
+def launch_calibration(robot_ip, ds: DataStore):
     try:
         iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
 
         tcps = collect_data(iscoin.robot_control)
         tcp_offset = get_tcp_offset(tcps)
 
-        log.save_calibration(tcps, tcp_offset)
-        log.log_calibration(tcps, tcp_offset)
-        
-        iscoin.close()
+        ds.save_calibration(tcps, tcp_offset)
+        ds.log_calibration(tcps, tcp_offset)
+
         return True
     except Exception as e:
-        log.log(f"Calibration skipped: {e}")
+        ds.log(f"Calibration skipped: {e}")
         return False
+
+class Calibration:
+    def __init__(self, datastore: DataStore, robot_ip: str):
+        self.ds = datastore
+        self.robot_ip = robot_ip
+
+    def run(self):
+        while True:
+            answer = input("Do you want to run a robot calibration? y/n\n")
+            if answer == "y":
+                successed = launch_calibration(self.robot_ip, self.ds)
+                if not successed:
+                    continue
+                else:
+                    return
+
+            answer = input("Do you have a calibration already saved? y/n\n")
+            if answer == "y":
+                tcps, tcp_offset = self.ds.load_calibration()
+                self.ds.log_calibration(tcps, tcp_offset)
+                return
+            else:
+                answer = input("Do you want to use the default? y/n\n")
+                if answer == "y":
+                    tcps, tcp_offset = self.ds.load_calibration()
+                    self.ds.save_calibration(tcps, tcp_offset, "save_data/calibration_previous.pkl")
+                    tcps, tcp_offset = self.ds.load_calibration("save_data/calibration_default.pkl")
+                    self.ds.save_calibration(tcps, tcp_offset)
+                    self.ds.log_calibration(tcps, tcp_offset)
+                    return
+
+    def fall_back(self):
+        tcps, tcp_offset = self.ds.load_calibration()
+        self.ds.save_calibration(tcps, tcp_offset, "save_data/calibration_fallback.pkl")
+        tcps, tcp_offset = self.ds.load_calibration("save_data/calibration_default.pkl")
+        self.ds.save_calibration(tcps, tcp_offset)
+        self.ds.log_calibration(tcps, tcp_offset)
