@@ -5,11 +5,10 @@ Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 '''
 
 import logging
-from dataclasses import dataclass, field
-from enum import Enum, auto
 
 import numpy as np
 
+from segment import Segment, MotionType
 from src.config import (
     DRAW_V, DRAW_A, APPROACH_V, APPROACH_A, TRAVEL_V, TRAVEL_A,
     HOVER_OFFSET,
@@ -17,23 +16,6 @@ from src.config import (
 from src.utils import obj_to_stl, tcp_trans
 
 log = logging.getLogger(__name__)
-
-
-class MotionType(Enum):
-    TRAVEL = auto()      # free-space collision-avoidant move
-    APPROACH = auto()    # pen-down / pen-up (hover ↔ surface)
-    DRAW = auto()        # on-surface stroke
-
-
-@dataclass
-class Segment:
-    motion_type: MotionType
-    waypoints: list      # list[TCP6D]
-    v: float             # velocity m/s
-    a: float             # acceleration m/s²
-    r: float = 0.0       # blend radius
-    joint_waypoints: list | None = None  # optional pre-computed Joint6D list
-
 
 def compute_draw_motion(trace, obj2robot, hover_offset=None, max_pts=None):
     from URBasic import TCP6D
