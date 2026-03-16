@@ -186,27 +186,28 @@ def build_manual_transform(rz_deg=45.0, translation=(0, -0.2, 0.1), scale=0.001)
     return obj2robot
 
 
-def launch_transformation(robot_ip, file_path, log: DataStore):
+def launch_transformation(robot_ip, file_path, ds: DataStore):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         
         iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
+        _, tcp_offset = ds.load_calibration()
+        iscoin.robot_control.set_tcp(tcp_offset)
 
         p_world = np.array(data["calibration"])
         p_tcps = collect_data(iscoin.robot_control, p_world)
 
-        log.save_worldtcp(p_world, p_tcps)
-        log.log_worldtcp(p_world,p_tcps)
+        ds.save_worldtcp(p_world, p_tcps)
+        ds.log_worldtcp(p_world,p_tcps)
 
         obj2robot = create_transformation(p_world, p_tcps)
 
-        log.save_transformation(obj2robot)
-        log.log_transformation(obj2robot)
+        ds.save_transformation(obj2robot)
+        ds.log_transformation(obj2robot)
 
-        iscoin.close()
     except Exception as e:
-        log.log(f"Transforamtion skipped: {e}")
+        ds.log(f"Transforamtion skipped: {e}")
         raise
 
 class Transformation:
