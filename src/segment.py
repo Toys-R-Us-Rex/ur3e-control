@@ -9,8 +9,8 @@ class MotionType(Enum):
 
 
 class SideType(Enum):
-    RIGHT = auto()
-    LEFT = auto()
+    RIGHT = auto()  # y < 0
+    LEFT = auto()   # y > 0
 
 @dataclass
 class Segment:
@@ -19,7 +19,12 @@ class Segment:
 
 @dataclass
 class TraceSegment(Segment):
-    waypoints: list[list] | None = None  # optional pre-computed Joint6D list
+    waypoints: list[list] = None # x,y,z,n1,n2,n3
+
+@dataclass
+class RunSegment(Segment):
+    motion_type: MotionType = MotionType.DRAW
+    waypoints: list[TCP6D] = None  # pre-computed TCP6D list
 
 @dataclass
 class TCPSegment(Segment):
@@ -27,7 +32,7 @@ class TCPSegment(Segment):
     v: float             # velocity m/s
     a: float             # acceleration m/s²
     r: float = 0.0       # blend radius
-    waypoints: list[TCP6D] | None = None  # optional pre-computed TCP6D list
+    waypoints: list[TCP6D] = None  # pre-computed TCP6D list
 
 @dataclass
 class JointSegment(Segment):
@@ -35,4 +40,4 @@ class JointSegment(Segment):
     v: float             # velocity m/s
     a: float             # acceleration m/s²
     r: float = 0.0       # blend radius
-    waypoints: list[Joint6D] | None = None  # optional pre-computed Joint6D list
+    waypoints: list[Joint6D] = None  # optional pre-computed Joint6D list

@@ -11,7 +11,7 @@ from src.config import TCPS_20, OBSTACLE_STLS
 
 import pybullet as pb
 from URBasic import Joint6D
-from src.logger import LoggingLog
+from src.logger import DataStore
 from src.calibration import setup_robot
 from src.transformation import load_obj2robot, extract_pybullet_pose
 from src.safety import setup_checker
@@ -34,7 +34,7 @@ DEBUG = True
 
 ### main part
 
-record = LoggingLog()
+record = DataStore()
 home = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
 file_path = "duckify_simulation/paths/duck_uv-fancy_test_duck-trace_v2.json"
 

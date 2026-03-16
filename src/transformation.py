@@ -179,6 +179,30 @@ def build_manual_transform(rz_deg=OBJ2ROBOT_RZ_DEG, translation=OBJ2ROBOT_TRANSL
     obj2robot.T_normal = T_normal
     return obj2robot
 
+# gets the position, quaternion , scale from obj2robot so that pybullet can place the STL mesh in the space
+def extract_pybullet_pose(obj2robot):
+    from scipy.spatial.transform import Rotation as Rot
+    T = obj2robot.T
+    pos = T[:3, 3].tolist()
+    R = T[:3, :3]
+    scale = np.linalg.norm(R[:, 0])
+    U, _, Vt = np.linalg.svd(R)
+    R_pure = U @ Vt
+    if np.linalg.det(R_pure) < 0:
+        U[:, -1] *= -1
+        R_pure = U @ Vt
+    quat = Rot.from_matrix(R_pure).as_quat().tolist()
+    return pos, quat, scale
+
+# gets the transform data from the pickle files.
+def load_obj2robot(record, rz_deg=OBJ2ROBOT_RZ_DEG):
+    T_loaded, _ = record.load_transformation()
+    if T_loaded is not None:
+        translation = tuple(T_loaded[:3, 3])
+    else:
+        translation = OBJ2ROBOT_TRANSLATION
+    return build_manual_transform(rz_deg=rz_deg, translation=translation)
+
 
 def launch_transformation(robot_ip, file_path, ds: DataStore):
     try:
