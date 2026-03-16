@@ -4,7 +4,7 @@ import csv
 import pickle
 import os
 
-from src.computation import Segment
+from src.segment import TraceSegment, JointSegment, TCPSegment
 
 from URBasic import TCP6D, Joint6D
 
@@ -46,7 +46,43 @@ class DataStore:
             s += ", "
         s += "\n"
         self.log(f"Path of the robot (waypoints):\n" + s)
-        
+
+    def log_trace_segment(self, segments: list[TraceSegment]):
+        s = ""
+        for i, seg in enumerate(segments):
+            s += f"Segment {i}, {seg.side}, {seg.color}:\n"
+            for p in seg.waypoints:
+                s += str(p)
+                s += ", "
+            s += "\n"   
+        s += "\n"
+        self.log(f"Path of the robot (traces):\n" + s)
+        pass
+    
+    def log_tcp_segment(self, segments: list[TCPSegment]):
+        s = ""
+        for i, seg in enumerate(segments):
+            s += f"Segment {i}, {seg.side}, {seg.color}:\n"
+            for p in seg.waypoints:
+                s += str(p.toList())
+                s += ", "
+            s += "\n"   
+        s += "\n"
+        self.log(f"Path of the robot (tcp waypoints):\n" + s)
+        pass
+
+    def log_tcp_segment(self, segments: list[JointSegment]):
+        s = ""
+        for i, seg in enumerate(segments):
+            s += f"Segment {i}, {seg.side}, {seg.color}:\n"
+            for p in seg.waypoints:
+                s += str(p.toList())
+                s += ", "
+            s += "\n"   
+        s += "\n"
+        self.log(f"Path of the robot (joint waypoints):\n" + s)
+        pass
+
     def log(self, message: str):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         entry = f"{timestamp} - {message}\n"
@@ -186,9 +222,9 @@ class DataStore:
         return waypoints
 
 
-    def save_segments(self, segments: list[Segment], file_path=None):
+    def save_tcp_segments(self, segments: list[TCPSegment], file_path=None):
         if not file_path:
-            file_path = self.data_path + "segments_data.pkl"
+            file_path = self.data_path + "tcp_segments_data.pkl"
 
         # Ensure folder exists
         folder = os.path.dirname(file_path)
@@ -198,21 +234,81 @@ class DataStore:
 
         with open(file_path, "wb") as f:
             pickle.dump({"segments":segments}, f)
-        self.log(f"Saved segments data to file {file_path}")
+        self.log(f"Saved TCP segments data to file {file_path}")
 
-    def load_segments(self, file_path=None):
+    def load_tcp_segments(self, file_path=None):
         if not file_path:
-            file_path = self.data_path + "segments_data.pkl"
+            file_path = self.data_path + "tcp_segments_data.pkl"
 
         if not os.path.exists(file_path):
-            self.log(f"Segments data file not found {file_path}")
+            self.log(f"TCP segments data file not found {file_path}")
             return None, None
 
         with open(file_path, "rb") as f:
             data = pickle.load(f)
 
         segments = data["segments"]
-        self.log(f"Loaded segments data from file {file_path}")
+        self.log(f"Loaded TCP segments data from file {file_path}")
+        return segments
+
+
+    def save_joint_segments(self, segments: list[JointSegment], file_path=None):
+        if not file_path:
+            file_path = self.data_path + "joint_segments_data.pkl"
+
+        # Ensure folder exists
+        folder = os.path.dirname(file_path)
+        if folder and not os.path.exists(folder):
+            self.log(f"Create folder {folder}")
+            os.makedirs(folder)
+
+        with open(file_path, "wb") as f:
+            pickle.dump({"segments":segments}, f)
+        self.log(f"Saved Joint segments data to file {file_path}")
+
+    def load_joint_segments(self, file_path=None):
+        if not file_path:
+            file_path = self.data_path + "joint_segments_data.pkl"
+
+        if not os.path.exists(file_path):
+            self.log(f"Joint segments data file not found {file_path}")
+            return None, None
+
+        with open(file_path, "rb") as f:
+            data = pickle.load(f)
+
+        segments = data["segments"]
+        self.log(f"Loaded Joint segments data from file {file_path}")
+        return segments
+    
+
+    def save_trace_segment(self, segments: list[TraceSegment], file_path=None):
+        if not file_path:
+            file_path = self.data_path + "trace_segments_data.pkl"
+
+        # Ensure folder exists
+        folder = os.path.dirname(file_path)
+        if folder and not os.path.exists(folder):
+            self.log(f"Create folder {folder}")
+            os.makedirs(folder)
+
+        with open(file_path, "wb") as f:
+            pickle.dump({"segments":segments}, f)
+        self.log(f"Saved Trace segments data to file {file_path}")
+
+    def load_trace_segment(self, file_path=None):
+        if not file_path:
+            file_path = self.data_path + "trace_segments_data.pkl"
+
+        if not os.path.exists(file_path):
+            self.log(f"Joint segments data file not found {file_path}")
+            return None, None
+
+        with open(file_path, "rb") as f:
+            data = pickle.load(f)
+
+        segments = data["segments"]
+        self.log(f"Loaded Joint segments data from file {file_path}")
         return segments
 
 
