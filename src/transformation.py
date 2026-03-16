@@ -53,9 +53,33 @@ import json
 import numpy as np
 
 from src.utils import *
-from src.logger import LoggingLog
+from src.logger import DataStore
 
 from URBasic.iscoin import ISCoin
+
+class AtoB:
+    def __init__(self, T_position, T_orientation):
+        self.T_position = T_position
+        self.T_orientation = T_orientation
+    
+    def __call__(self, p):
+        p = np.asarray(p)
+        point = p[:3]
+        normal = p[3:]
+
+        # Transform point
+        p_h = np.array([*point, 1.0])
+        p_new = self.T_position @ p_h
+
+        # Transform normal
+        n_h = np.array([*normal, 1.0])
+        n_new = (self.T_orientation @ n_h)[:3]
+        n_new /= np.linalg.norm(n_new)
+
+        r_new = normal_to_rotvec(n_new)
+
+        return [*p_new[:3], *r_new]
+        
 
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:
@@ -95,7 +119,7 @@ def collect_data(robot_arm, world_measure):
 
     return np.array(tcps)
 
-def create_transformation(A, B):
+def create_transformation(A, B) -> AtoB:
     A = np.asarray(A)[:, :3]
     B = np.asarray(B)[:, :3]
     assert A.shape == B.shape
@@ -121,26 +145,7 @@ def create_transformation(A, B):
     T_normal = np.eye(4)
     T_normal[:3, :3] = R_normal
 
-    def AtoB(p):
-        p = np.asarray(p)
-        point = p[:3]
-        normal = p[3:]
-        # Transform point
-        p_new = T @ [*point, 1]
-
-        # Transform normal (4×4 homogeneous, extract xyz before normalizing)
-        nx,ny,nz = normal
-        n_new = (T_normal @ [nx,ny,nz, 1])[:3]
-        n_new /= np.linalg.norm(n_new)
-        r_new = normal_to_rotvec(n_new)
-
-        return [*p_new[:3], *r_new]
-
-    # Expose 4×4 matrices as attributes for inspection/composition
-    AtoB.T = T
-    AtoB.T_normal = T_normal
-
-    return AtoB
+    return AtoB(T, T_normal)
 
 
 def build_manual_transform(rz_deg=45.0, translation=(0, -0.2, 0.1), scale=0.001):
@@ -180,76 +185,8 @@ def build_manual_transform(rz_deg=45.0, translation=(0, -0.2, 0.1), scale=0.001)
     obj2robot.T_normal = T_normal
     return obj2robot
 
-def tcp_trans(tcp1, tcp2):
-    # Décomposition
-    p1 = np.array(tcp1[:3])
-    r1 = np.array(tcp1[3:])
-    p2 = np.array(tcp2[:3])
-    r2 = np.array(tcp2[3:])
 
-    # Matrices de rotation
-    R1 = rotvec_to_rotmat(r1)
-    R2 = rotvec_to_rotmat(r2)
-
-    # Composition
-    p_new = p1 + R1 @ p2
-    R_new = R1 @ R2
-    r_new = rotmat_to_rotvec(R_new)
-
-    return np.concatenate([p_new, r_new])
-
-def obj_to_stl(pts):
-    """
-    Convert from OBJ coords (Y-up) to STL coords (Z-up).
-    Mapping: OBJ(x, y, z) → STL(x, -z, y).
-
-    Accepts:
-        - a single point: (3,)
-        - a list of points: (N, 3)
-    """
-    pts = np.asarray(pts)
-
-    # Single point
-    if pts.ndim == 1:
-        x, y, z = pts
-        return np.array([x, -z, y])
-
-    # Multiple points (N, 3)
-    if pts.ndim == 2 and pts.shape[1] == 3:
-        x = pts[:, 0]
-        y = pts[:, 1]
-        z = pts[:, 2]
-        return np.column_stack([x, -z, y])
-
-    raise ValueError("Input must be shape (3,) or (N,3)")
-
-def stl_to_obj(pts):
-    """
-    Convert from STL coordinates (Z-up) to OBJ coordinates (Y-up).
-    Mapping: STL(x, y, z) → OBJ(x, z, -y).
-
-    Accepts:
-        - a single point: (3,)
-        - a list of points: (N, 3)
-    """
-    pts = np.asarray(pts)
-
-    # Single point
-    if pts.ndim == 1:
-        x, y, z = pts
-        return np.array([x, z, -y])
-
-    # Multiple points (N, 3)
-    if pts.ndim == 2 and pts.shape[1] == 3:
-        x = pts[:, 0]
-        y = pts[:, 1]
-        z = pts[:, 2]
-        return np.column_stack([x, z, -y])
-
-    raise ValueError("Input must be shape (3,) or (N,3)")
-
-
-def launch_transformation(robot_ip, file_path, log: LoggingLog):
+def launch_transformation(robot_ip, file_path, log: DataStore):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -268,7 +205,22 @@ def launch_transformation(robot_ip, file_path, log: LoggingLog):
         log.log_transformation(obj2robot)
 
         iscoin.close()
-        return True
     except Exception as e:
         log.log(f"Transforamtion skipped: {e}")
-        return False
+        raise
+
+class Transformation:
+    def __init__(self, datastore: DataStore, robot_ip: str, json_calibration: str):
+        self.ds = datastore
+        self.robot_ip = robot_ip
+        self.json_calibration = json_calibration
+
+    def run(self):
+        while True:
+            answer = input("Do you have the transformation already saved? y/n \n")
+            if answer == "y":
+                return
+            
+            answer = input("Do you want to run a robot transformation? y/n \n")
+            if answer == "y":
+                launch_transformation(self.robot_ip, self.json_calibration, self.ds)

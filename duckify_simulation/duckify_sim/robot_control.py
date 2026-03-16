@@ -473,7 +473,7 @@ class SimRobotControl:
         '''
         if wait:
             time.sleep(0.5)
-        return TCP6D.createFromMetersRadians(1,2,3,0.1,0.2,0.3)
+        return [1,2,3,0.1,0.2,0.3]
     
     def force(self, wait=True) -> float:
         '''

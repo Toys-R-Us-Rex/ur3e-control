@@ -14,7 +14,7 @@ from src.config import (
     DRAW_V, DRAW_A, APPROACH_V, APPROACH_A, TRAVEL_V, TRAVEL_A,
     HOVER_OFFSET,
 )
-from src.transformation import obj_to_stl, tcp_trans
+from src.utils import obj_to_stl, tcp_trans
 
 log = logging.getLogger(__name__)
 
