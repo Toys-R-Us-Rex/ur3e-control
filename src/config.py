@@ -4,6 +4,9 @@ MIT License
 Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 '''
 
+# Collision margin
+COLLISION_MARGIN = 0       # margin for obstacle collision checks
+
 # Pathfinding parameters
 SAFE_MARGIN = 0.005
 PUSH_STEP   = 0.005    # midpoint push increment
@@ -87,3 +90,5 @@ OBSTACLE_STLS = [
         'scale': [0.001, 0.001, 0.001],
     },
 ]
+
+DRAWING_ANGLE = 25

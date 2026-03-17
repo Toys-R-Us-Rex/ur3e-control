@@ -10,6 +10,7 @@ from URBasic import TCP6D
 from src.config import (
     JOINT_LIMITS, TCP_Y_MAX, TCP_Z_MIN, TCP_Z_MAX,
     UR3E_MAX_REACH, FREE_TRAVEL_STEP, LINK_Z_MIN,
+    DRAWING_ANGLE, COLLISION_MARGIN
 )
 from src.kinematics import get_all_ik_solutions
 
@@ -108,7 +109,7 @@ class CollisionChecker:
     def in_self_collision(self):
         return self.self_detector.in_collision(margin=0)
 
-    def in_obstacle_collision(self, margin=0.005):
+    def in_obstacle_collision(self, margin=COLLISION_MARGIN):
         if self.obstacle_detector is None:
             return False
         return self.obstacle_detector.in_collision(margin=margin)
@@ -137,9 +138,9 @@ class CollisionChecker:
 
     # -------------------------------------------------------------------------
 
-    def validate_tcp(self, robot, tcp, qnear=None, margin=0.005,
+    def validate_tcp(self, robot, tcp, qnear=None, margin=COLLISION_MARGIN,
                      check_obstacle=True, orientation_search=False,
-                     max_cone_angle=math.radians(15), cone_step=math.radians(5)):
+                     max_cone_angle=math.radians(DRAWING_ANGLE), cone_step=math.radians(5)):
         ok, reason = self.check_workspace_bounds(tcp)
         if not ok:
             return False, None, reason, tcp
@@ -221,7 +222,7 @@ class CollisionChecker:
 
     # -------------------------------------------------------------------------
 
-    def validate_path(self, robot, waypoints_tcp, step=None, margin=0.005,
+    def validate_path(self, robot, waypoints_tcp, step=None, margin=COLLISION_MARGIN,
                       qnear=None, check_obstacle=True, orientation_search=False):
         if step is None:
             step = FREE_TRAVEL_STEP
