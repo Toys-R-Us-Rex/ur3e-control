@@ -144,18 +144,7 @@ def build_manual_transform(rz_deg=OBJ2ROBOT_RZ_DEG, translation=OBJ2ROBOT_TRANSL
     T_normal = np.eye(4)
     T_normal[:3, :3] = R_normal
 
-    def obj2robot(p):
-        p = np.asarray(p)
-        point, normal = p[:3], p[3:]
-        p_new = T @ [*point, 1]
-        n_new = (T_normal @ [*normal, 1])[:3]
-        n_new /= np.linalg.norm(n_new)
-        r_new = normal_to_rotvec(n_new)
-        return [*p_new[:3], *r_new]
-
-    obj2robot.T = T
-    obj2robot.T_normal = T_normal
-    return obj2robot
+    return AtoB(T, T_normal)
 
 # gets the position, quaternion , scale from obj2robot so that pybullet can place the STL mesh in the space
 def extract_pybullet_pose(obj2robot):
