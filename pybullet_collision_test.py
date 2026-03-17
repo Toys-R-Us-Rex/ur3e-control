@@ -7,12 +7,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 logging.basicConfig(level=logging.WARNING)
 
+from duckify_simulation.duckify_sim.robot_control import SimRobotControl
 from src.config import TCPS_20, OBSTACLE_STLS
 
 import pybullet as pb
 from URBasic import Joint6D
 from src.logger import DataStore
-from src.calibration import setup_robot
 from src.transformation import load_obj2robot, extract_pybullet_pose
 from src.safety import setup_checker
 from src.computation import (
@@ -44,12 +44,15 @@ home = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3
 file_path = "duckify_simulation/paths/duck_uv-fancy_test_duck-trace_v2.json"
 
 # Stage 0: setup robot
-robot = setup_robot(TCPS_20)
+robot = SimRobotControl()
+_, tcp_offset = record.load_calibration("save_data/calibration_default.pkl")
+robot.set_tcp(tcp_offset)
 
 # Stage 1+2: load traces and convert to TCP
 obj2robot = load_obj2robot(record)
 
 surface_tcps_per_trace, traces, data = load_and_convert_to_tcp(file_path, obj2robot, max_pts=1000)
+print(surface_tcps_per_trace)
 print(f"Loaded {len(traces)} traces, transformed to TCP6D")
 
 # Stage 3: launch PyBullet with obstacles positioned using obj2robot
