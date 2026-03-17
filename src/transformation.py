@@ -52,11 +52,13 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 import json
 import numpy as np
 
+from URBasic.waypoint6d import TCP6D
 from src.config import *
 from src.utils import *
 from src.logger import DataStore
 
 from URBasic.iscoin import ISCoin
+from duckify_simulation.duckify_sim import DuckifySim
       
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:
@@ -158,7 +160,7 @@ def build_manual_transform(rz_deg=OBJ2ROBOT_RZ_DEG, translation=OBJ2ROBOT_TRANSL
 # gets the position, quaternion , scale from obj2robot so that pybullet can place the STL mesh in the space
 def extract_pybullet_pose(obj2robot):
     from scipy.spatial.transform import Rotation as Rot
-    T = obj2robot.T
+    T = obj2robot.T_position
     pos = T[:3, 3].tolist()
     R = T[:3, :3]
     scale = np.linalg.norm(R[:, 0])
@@ -181,7 +183,7 @@ def load_obj2robot(record, rz_deg=OBJ2ROBOT_RZ_DEG):
     return build_manual_transform(rz_deg=rz_deg, translation=translation)
 
 
-def launch_transformation(robot_ip, file_path, ds: DataStore):
+def launch_transformation(robot_ip, file_path, ds: DataStore) -> AtoB:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -200,10 +202,38 @@ def launch_transformation(robot_ip, file_path, ds: DataStore):
 
         ds.save_transformation(obj2robot)
         ds.log_transformation(obj2robot)
+        return obj2robot
 
     except Exception as e:
         ds.log(f"Transforamtion skipped: {e}")
         raise
+
+def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
+    test = np.array([0,0,2,0,0,-1]) # x,y,z, n1,n2,n3
+    tcp = TCP6D.createFromMetersRadians( *obj2robot(test))
+    ds.log(f"Conversion test; {test} give {tcp}")
+    print(f"Conversion test; {test} give {tcp}")
+    if not ask_yes_no("Do you want to test on the robot? y/n \n"):
+        return
+    
+    duckify_sim = DuckifySim()
+    robot_sim = duckify_sim.robot_control
+    _, tcp_offset = ds.load_calibration()
+    robot_sim.set_tcp(tcp_offset)
+    robot_sim.movej(HOMEJ)
+    print(robot_sim.get_actual_tcp_pose())
+    robot_sim.movel(tcp)
+    
+    if not ask_yes_no("Do you want to test on the robot? y/n \n"):
+        return
+
+    iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
+    robot = iscoin.robot_control
+
+    robot.set_tcp(tcp_offset)
+    robot.movej(HOMEJ)
+    robot.movel(tcp)
+
 
 class Transformation:
     def __init__(self, datastore: DataStore, robot_ip: str, json_calibration: str):
@@ -214,11 +244,15 @@ class Transformation:
     def run(self):
         while True:
             if ask_yes_no("Do you have the transformation already saved? y/n \n"):
-                self.ds.load_transformation()
+                obj2robot = self.ds.load_transformation()
+                if ask_yes_no("Do you want to test transformation? y/n \n"):
+                    test_transforamtion(self.ds, obj2robot, self.robot_ip)
                 return
 
             if ask_yes_no("Do you want to run a robot transformation? y/n \n"):
-                launch_transformation(self.robot_ip, self.json_calibration, self.ds)
+                obj2robot = launch_transformation(self.robot_ip, self.json_calibration, self.ds)
+                if ask_yes_no("Do you want to test transformation? y/n \n"):
+                    test_transforamtion(self.ds, obj2robot, self.robot_ip)
                 return
 
             if ask_yes_no("You don't have a transformation or can't run one? y/n \n"):

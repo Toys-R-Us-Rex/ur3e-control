@@ -8,7 +8,7 @@ import logging
 
 import numpy as np
 
-from src.segment import Segment, MotionType
+from src.segment import JointSegment, MotionType, SideType, TCPSegment
 from src.config import (
     DRAW_V, DRAW_A, APPROACH_V, APPROACH_A, TRAVEL_V, TRAVEL_A,
     HOVER_OFFSET,
@@ -246,7 +246,7 @@ def plan_drawing(robot, checker, traces, obj2robot,
                 travel_wps, _ = compute_positioning_motion(
                     robot, checker, current_tcp, h_entry,
                 )
-                segments.append(Segment(
+                segments.append(TCPSegment(
                     motion_type=MotionType.TRAVEL,
                     waypoints=travel_wps,
                     v=TRAVEL_V,
@@ -254,7 +254,7 @@ def plan_drawing(robot, checker, traces, obj2robot,
                 ))
 
             # APPROACH pen-down
-            segments.append(Segment(
+            segments.append(TCPSegment(
                 motion_type=MotionType.APPROACH,
                 waypoints=[h_entry, run_surface[0]],
                 v=APPROACH_V,
@@ -262,7 +262,7 @@ def plan_drawing(robot, checker, traces, obj2robot,
             ))
 
             # DRAW on surface
-            segments.append(Segment(
+            segments.append(TCPSegment(
                 motion_type=MotionType.DRAW,
                 waypoints=run_surface,
                 v=DRAW_V,
@@ -270,7 +270,7 @@ def plan_drawing(robot, checker, traces, obj2robot,
             ))
 
             # APPROACH pen-up
-            segments.append(Segment(
+            segments.append(TCPSegment(
                 motion_type=MotionType.APPROACH,
                 waypoints=[run_surface[-1], h_exit],
                 v=APPROACH_V,
@@ -285,7 +285,7 @@ def plan_drawing(robot, checker, traces, obj2robot,
         travel_wps, _ = compute_positioning_motion(
             robot, checker, current_tcp, home_tcp,
         )
-        segments.append(Segment(
+        segments.append(TCPSegment(
             motion_type=MotionType.TRAVEL,
             waypoints=travel_wps,
             v=TRAVEL_V,
@@ -359,10 +359,12 @@ def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, 
         print(f"    from {fmt_tcp(current_tcp)}  to {fmt_tcp(h_entry)}")
         try:
             travel_wps, travel_joints = compute_positioning_motion(robot, checker, current_tcp, h_entry)
-            segments.append(Segment(
+            segments.append(JointSegment(
                 motion_type=MotionType.TRAVEL,
-                waypoints=travel_wps, v=TRAVEL_V, a=TRAVEL_A,
-                joint_waypoints=travel_joints,
+                color=1,
+                side=SideType.LEFT,
+                v=TRAVEL_V, a=TRAVEL_A,
+                waypoints=travel_joints,
             ))
             print(f"    TRAVEL OK ({len(travel_wps)} wps)")
         except RuntimeError as e:
@@ -371,26 +373,32 @@ def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, 
             continue
 
         print(f"  [{entry_label}] -> [Run{run_i} surface[0]]")
-        segments.append(Segment(
+        segments.append(JointSegment(
             motion_type=MotionType.APPROACH,
-            waypoints=[h_entry, run_surface[0]], v=APPROACH_V, a=APPROACH_A,
-            joint_waypoints=[q_entry, trace_surface_joints[run_start]],
+            color=1,
+            side=SideType.LEFT,
+            waypoints=[q_entry, trace_surface_joints[run_start]],
+            v=APPROACH_V, a=APPROACH_A
         ))
         print(f"    APPROACH down OK")
 
         print(f"  [Run{run_i} surface[0]] -> [Run{run_i} surface[{len(run_surface)-1}]]")
-        segments.append(Segment(
+        segments.append(JointSegment(
             motion_type=MotionType.DRAW,
-            waypoints=run_surface, v=DRAW_V, a=DRAW_A,
-            joint_waypoints=trace_surface_joints[run_start:run_end + 1],
+            color=1,
+            side=SideType.LEFT,
+            waypoints=trace_surface_joints[run_start:run_end + 1],
+            v=DRAW_V, a=DRAW_A
         ))
         print(f"    DRAW OK ({len(run_surface)} pts)")
 
         print(f"  [Run{run_i} surface[{len(run_surface)-1}]] -> [{exit_label}]")
-        segments.append(Segment(
+        segments.append(JointSegment(
             motion_type=MotionType.APPROACH,
-            waypoints=[run_surface[-1], h_exit], v=APPROACH_V, a=APPROACH_A,
-            joint_waypoints=[trace_surface_joints[run_end], q_exit],
+            color=1,
+            side=SideType.LEFT,
+            waypoints=[trace_surface_joints[run_end], q_exit],
+            v=APPROACH_V, a=APPROACH_A
         ))
         print(f"    APPROACH up OK")
 
@@ -402,10 +410,12 @@ def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, 
     print(f"    from {fmt_tcp(current_tcp)}  to {fmt_tcp(home_tcp)}")
     try:
         travel_wps, travel_joints = compute_positioning_motion(robot, checker, current_tcp, home_tcp)
-        segments.append(Segment(
+        segments.append(JointSegment(
             motion_type=MotionType.TRAVEL,
-            waypoints=travel_wps, v=TRAVEL_V, a=TRAVEL_A,
-            joint_waypoints=travel_joints,
+            color=1,
+            side=SideType.LEFT,
+            waypoints=travel_joints,
+            v=TRAVEL_V, a=TRAVEL_A,
         ))
         print(f"    TRAVEL OK ({len(travel_wps)} wps)")
     except RuntimeError as e:
@@ -425,7 +435,7 @@ def print_segment_summary(segments):
 
     print(f"\nJoint plan:")
     for i, seg in enumerate(segments):
-        n_joints = len(seg.joint_waypoints) if seg.joint_waypoints else 0
+        n_joints = len(seg.waypoints) if seg.waypoints else 0
         print(f"  Segment {i}: {seg.motion_type.name:8s} - {n_joints:3d} joint waypoints")
 
 

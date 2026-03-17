@@ -52,13 +52,6 @@ from URBasic import TCP6D
 from URBasic import UrScript
 from URBasic import ISCoin
 
-def setup_robot(tcps):
-    from duckify_simulation.duckify_sim.robot_control import SimRobotControl
-    robot = SimRobotControl()
-    tcp_offset = get_tcp_offset(tcps)
-    robot.set_tcp(tcp_offset)
-    return robot
-
 
 def collect_data(robot_arm: UrScript, num_measure:int = 20):
     """
@@ -293,6 +286,7 @@ def launch_calibration(robot_ip, ds: DataStore):
         ds.log(f"Calibration skipped: {e}")
         return False
 
+
 class Calibration:
     def __init__(self, datastore: DataStore, robot_ip: str):
         self.ds = datastore
@@ -310,6 +304,11 @@ class Calibration:
             if ask_yes_no("Do you have a calibration already saved? y/n\n"):
                 tcps, tcp_offset = self.ds.load_calibration()
                 self.ds.log_calibration(tcps, tcp_offset)
+                if ask_yes_no("Do you want to offset the TCP offset? y/n \n"):
+                    z = input("How many do you which to slide on Z: \n")
+                    tcp_offset.z += np.float(z)
+                    self.ds.save_calibration(tcps, tcp_offset)
+                    self.ds.log_calibration(tcps, tcp_offset)
                 return
 
             if ask_yes_no("Do you want to use the default? y/n\n"):

@@ -4,10 +4,11 @@ import time
 
 from src.logger import DataStore
 from src.calibration import Calibration
+from src.segment import SideType
 from src.transformation import Transformation
 from src.filter import Filter
-#from src.conversion import Conversion
-#from src.pathfinding import Pathfinding
+from src.conversion import Conversion
+from src.pathfinding_ import Pathfinding
 from src.gazebo import Gazebo
 from src.robot import Robot
 
@@ -54,12 +55,12 @@ def main():
     ds = DataStore(f"save_data_test/{day}/")
     ds.log("Pipeline started")
 
-    run_stage("Calibration", Calibration(ds, ROBOT_IP), ds, on_error="continue")
+    run_stage("Calibration TCP", Calibration(ds, ROBOT_IP), ds, on_error="continue")
     run_stage("ComputeTransformation", Transformation(ds, ROBOT_IP, JSON_CALIBRATION), ds, on_error="fallback")
     run_stage("Filter", Filter(ds, JSON_OBJECT), ds, on_error="stop")
-    #run_stage("Conversion", Conversion(ds, JSON_OBJECT), ds, on_error="stop")
-    #run_stage("Pathfinding", Pathfinding(ds), ds, on_error="stop")
-    run_stage("Gazebo", Gazebo(ds), ds, on_error="fallback")
+    run_stage("Conversion", Conversion(ds), ds, on_error="stop")
+    run_stage("Pathfinding", Pathfinding(ds, side=SideType.RIGHT), ds, on_error="stop")
+    run_stage("Gazebo", Gazebo(ds), ds, on_error="stop")
     run_stage("Run Robot", Robot(ds,ROBOT_IP), ds, on_error="continue")
 
     ds.log("Pipeline finished")

@@ -65,19 +65,19 @@ class DataStore:
         for i, seg in enumerate(segments):
             s += f"Segment {i}, {seg.side}, {seg.color}:\n"
             for p in seg.waypoints:
-                s += str(p.toList())
+                s += str(p)
                 s += ", "
             s += "\n"   
         s += "\n"
         self.log(f"Path of the robot (tcp waypoints):\n" + s)
         pass
 
-    def log_tcp_segment(self, segments: list[JointSegment]):
+    def log_joint_segment(self, segments: list[JointSegment]):
         s = ""
         for i, seg in enumerate(segments):
             s += f"Segment {i}, {seg.side}, {seg.color}:\n"
             for p in seg.waypoints:
-                s += str(p.toList())
+                s += str(p)
                 s += ", "
             s += "\n"   
         s += "\n"
@@ -353,7 +353,7 @@ class DataStore:
         else:
             self.save_history("trace_segments", data)
 
-    def load_trace_segments(self, file_path=None, index=-1):
+    def load_trace_segments(self, file_path=None, index=-1) -> list[TraceSegment]:
         if file_path:
             if not os.path.exists(file_path):
                 self.log(f"Trace segments data file not found {file_path}")
