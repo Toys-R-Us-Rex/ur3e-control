@@ -4,7 +4,8 @@ import csv
 import pickle
 import os
 
-from src.segment import TraceSegment, JointSegment, TCPSegment
+from src.segment import *
+from src.utils import AtoB
 
 from URBasic import TCP6D, Joint6D
 
@@ -37,7 +38,7 @@ class DataStore:
         self.log(f"Object Calibration (world,robot):\n" + s)
 
     def log_transformation(self, AtoB):
-        self.log(f"Transformation (world => robot):\n" + str(AtoB.T) + "\n" + str(AtoB.T_normal))
+        self.log(f"Transformation (world => robot):\n" + str(AtoB.T_position) + "\n" + str(AtoB.T_orientation))
 
     def log_waypoint(self, waypoints):
         s = ""
@@ -90,225 +91,316 @@ class DataStore:
         with open(self.log_path, "a") as f:
             f.write(entry)
     
+    # ----------------------------------------------------
+    #                SAVE / LOAD HELPER
+    # ----------------------------------------------------
+
+    def _indexed_file(self, key, index):
+        return os.path.join(self.data_path, f"{key}_{index}.pkl")
+
+    def _next_index(self, key):
+        files = [f for f in os.listdir(self.data_path) if f.startswith(key + "_")]
+        if not files:
+            return 0
+        indices = [int(f.split("_")[-1].split(".")[0]) for f in files]
+        return max(indices) + 1
+    
+    def save_history(self, key, obj):
+        idx = self._next_index(key)
+        file_path = self._indexed_file(key, idx)
+        with open(file_path, "wb") as f:
+            pickle.dump(obj, f)
+        self.log(f"Saved history entry {idx} for {key} -> {file_path}")
+
+    def load_history_latest(self, key):
+        idx = self._next_index(key) - 1
+        if idx < 0:
+            self.log(f"No history found for {key}")
+            return None
+        return self.load_history_index(key, idx)
+
+    def load_history_index(self, key, index):
+        if index == -1:
+            return self.load_history_latest(key)
+        file_path = self._indexed_file(key, index)
+        if not os.path.exists(file_path):
+            self.log(f"History file not found: {file_path}")
+            return None
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
 
     # ----------------------------------------------------
     #                SAVE / LOAD DATA
     # ----------------------------------------------------
-    
-    
+
+
     def save_calibration(self, tcps, tcp_offset, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "calibration_data.pkl"
+        data = {"tcps": tcps, "tcp_offset": tcp_offset}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
+
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved calibration data to file {file_path}")
         
-        # Ensure folder exists
-        folder = os.path.dirname(file_path)
-        if folder and not os.path.exists(folder):
-            self.log(f"Create folder {folder}")
-            os.makedirs(folder)
+        else:
+            self.save_history("calibration", data)
 
-        with open(file_path, "wb") as f:
-            pickle.dump({"tcps": tcps, "tcp_offset": tcp_offset}, f)
-        self.log(f"Saved calibration data to file {file_path}")
+    def load_calibration(self, file_path=None, index=-1):
+        if file_path:            
+            if not os.path.exists(file_path):
+                self.log(f"Calibration data file not found {file_path}")
+                return None, None
 
-    def load_calibration(self, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "calibration_data.pkl"
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
         
-        if not os.path.exists(file_path):
-            self.log(f"Calibration data file not found {file_path}")
-            return None, None
+            self.log(f"Loaded calibration data from file {file_path}")
+        else:
+            data = self.load_history_index("calibration", index)
 
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
-    
         tcps = data["tcps"]
         tcp_offset = data["tcp_offset"]
-        self.log(f"Loaded calibration data from file {file_path}")
         return tcps, tcp_offset
 
 
     def save_worldtcp(self, pworld, tcps, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "worldtcp_data.pkl"
-    
-        # Ensure folder exists
-        folder = os.path.dirname(file_path)
-        if folder and not os.path.exists(folder):
-            self.log(f"Create folder {folder}")
-            os.makedirs(folder)
+        data = {"pworld": pworld, "tcps": tcps}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
+
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved worldtcp data to file {file_path}")
         
-        with open(file_path, "wb") as f:
-            pickle.dump({"pworld":pworld, "tcps":tcps}, f)
-        self.log(f"Saved worldtcp data to file {file_path}")
+        else:
+            self.save_history("worldtcp", data)
 
-    def load_worldtcp(self, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "worldtcp_data.pkl"
+    def load_worldtcp(self, file_path=None, index=-1):
+        if file_path:
+            if not os.path.exists(file_path):
+                self.log(f"Worldtcp data file not found {file_path}")
+                return None, None
 
-        if not os.path.exists(file_path):
-            self.log(f"Worldtcp data file not found {file_path}")
-            return None, None
-
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
     
+            self.log(f"Loaded worldrcp data from file {file_path}")
+        else:
+            data = self.load_history_index("worldrcp", index)
+        
         pworld = data["pworld"]
         tcps = data["tcps"]
-        self.log(f"Loaded calibration data from file {file_path}")
         return pworld, tcps
 
 
-    def save_transformation(self, AtoB, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "transformation_data.pkl"
+    def save_transformation(self, obj_to_robot: AtoB, file_path=None):
+        data = {"T_position": obj_to_robot.T_position, "T_normal": obj_to_robot.T_orientation}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
 
-        # Ensure folder exists
-        folder = os.path.dirname(file_path)
-        if folder and not os.path.exists(folder):
-            self.log(f"Create folder {folder}")
-            os.makedirs(folder)
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved transformation data to file {file_path}")
+        
+        else:
+            self.save_history("transformation", data)
 
-        T = AtoB.T
-        T_normal = AtoB.T_normal
+    def load_transformation(self, file_path=None, index=-1) -> AtoB:
+        if file_path:
+            if not os.path.exists(file_path):
+                self.log(f"Transformation data file not found {file_path}")
+                return None, None
+
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
     
-        with open(file_path, "wb") as f:
-            pickle.dump({"T":T, "T_normal":T_normal}, f)
-        self.log(f"Saved transformation data to file {file_path}")
-
-    def load_transformation(self, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "transformation_data.pkl"
-
-        if not os.path.exists(file_path):
-            self.log(f"Transformation data file not found {file_path}")
-            return None, None
-
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
-
-        T_obj = data["T"]
+            self.log(f"Loaded transformation data from file {file_path}")
+        else:
+            data = self.load_history_index("transformation", index)
+    
+        T_position = data["T_position"]
         T_normal = data["T_normal"]
-        self.log(f"Loaded transformation data from file {file_path}")
-        return T_obj, T_normal
+        return AtoB(T_position, T_normal)
     
+
 
     def save_waypoints(self, waypoints: list[TCP6D|Joint6D], file_path=None):
-        if not file_path:
-            file_path = self.data_path + "waypoints_data.pkl"
+        data = {"waypoints": waypoints}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
 
-        # Ensure folder exists
-        folder = os.path.dirname(file_path)
-        if folder and not os.path.exists(folder):
-            self.log(f"Create folder {folder}")
-            os.makedirs(folder)
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved waypoints data to file {file_path}")
+        
+        else:
+            self.save_history("waypoints", data)
 
-        with open(file_path, "wb") as f:
-            pickle.dump({"waypoints":waypoints}, f)
-        self.log(f"Saved waypoints data to file {file_path}")
+    def load_waypoints(self, file_path=None, index=-1):
+        if file_path:
+            if not os.path.exists(file_path):
+                self.log(f"Waypoints data file not found {file_path}")
+                return None, None
 
-    def load_waypoints(self, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "waypoints_data.pkl"
-
-        if not os.path.exists(file_path):
-            self.log(f"Waypoints data file not found {file_path}")
-            return None, None
-
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
+    
+            self.log(f"Loaded waypoints data from file {file_path}")
+        else:
+            data = self.load_history_index("waypoints", index)
 
         waypoints = data["waypoints"]
-        self.log(f"Loaded waypoints data from file {file_path}")
         return waypoints
 
 
     def save_tcp_segments(self, segments: list[TCPSegment], file_path=None):
-        if not file_path:
-            file_path = self.data_path + "tcp_segments_data.pkl"
+        data = {"segments": segments}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
 
-        # Ensure folder exists
-        folder = os.path.dirname(file_path)
-        if folder and not os.path.exists(folder):
-            self.log(f"Create folder {folder}")
-            os.makedirs(folder)
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved TCP segments data to file {file_path}")
+        
+        else:
+            self.save_history("tcp_segments", data)
 
-        with open(file_path, "wb") as f:
-            pickle.dump({"segments":segments}, f)
-        self.log(f"Saved TCP segments data to file {file_path}")
+    def load_tcp_segments(self, file_path=None, index=-1):
+        if file_path:
+            if not os.path.exists(file_path):
+                self.log(f"TCP segments data file not found {file_path}")
+                return None, None
 
-    def load_tcp_segments(self, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "tcp_segments_data.pkl"
-
-        if not os.path.exists(file_path):
-            self.log(f"TCP segments data file not found {file_path}")
-            return None, None
-
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
-
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
+    
+            self.log(f"Loaded TCP segments data from file {file_path}")
+        else:
+            data = self.load_history_index("tcp_segments", index)
+            
         segments = data["segments"]
-        self.log(f"Loaded TCP segments data from file {file_path}")
         return segments
 
 
     def save_joint_segments(self, segments: list[JointSegment], file_path=None):
-        if not file_path:
-            file_path = self.data_path + "joint_segments_data.pkl"
+        data = {"segments": segments}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
 
-        # Ensure folder exists
-        folder = os.path.dirname(file_path)
-        if folder and not os.path.exists(folder):
-            self.log(f"Create folder {folder}")
-            os.makedirs(folder)
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved Joint segments data to file {file_path}")
+        
+        else:
+            self.save_history("joint_segments", data)
 
-        with open(file_path, "wb") as f:
-            pickle.dump({"segments":segments}, f)
-        self.log(f"Saved Joint segments data to file {file_path}")
+    def load_joint_segments(self, file_path=None, index=-1):
+        if file_path:
+            if not os.path.exists(file_path):
+                self.log(f"Joint segments data file not found {file_path}")
+                return None, None
 
-    def load_joint_segments(self, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "joint_segments_data.pkl"
-
-        if not os.path.exists(file_path):
-            self.log(f"Joint segments data file not found {file_path}")
-            return None, None
-
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
-
-        segments = data["segments"]
-        self.log(f"Loaded Joint segments data from file {file_path}")
-        return segments
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
     
-
-    def save_trace_segment(self, segments: list[TraceSegment], file_path=None):
-        if not file_path:
-            file_path = self.data_path + "trace_segments_data.pkl"
-
-        # Ensure folder exists
-        folder = os.path.dirname(file_path)
-        if folder and not os.path.exists(folder):
-            self.log(f"Create folder {folder}")
-            os.makedirs(folder)
-
-        with open(file_path, "wb") as f:
-            pickle.dump({"segments":segments}, f)
-        self.log(f"Saved Trace segments data to file {file_path}")
-
-    def load_trace_segment(self, file_path=None):
-        if not file_path:
-            file_path = self.data_path + "trace_segments_data.pkl"
-
-        if not os.path.exists(file_path):
-            self.log(f"Joint segments data file not found {file_path}")
-            return None, None
-
-        with open(file_path, "rb") as f:
-            data = pickle.load(f)
-
+            segments = data["segments"]
+            self.log(f"Loaded Joint segments data from file {file_path}")
+        else:
+            data = self.load_history_index("joint_segments", index)
+            
         segments = data["segments"]
-        self.log(f"Loaded Joint segments data from file {file_path}")
+        return segments
+
+
+    def save_trace_segments(self, segments: list[TraceSegment], file_path=None):
+        data = {"segments": segments}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
+
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved Trace segments data to file {file_path}")
+        
+        else:
+            self.save_history("trace_segments", data)
+
+    def load_trace_segments(self, file_path=None, index=-1):
+        if file_path:
+            if not os.path.exists(file_path):
+                self.log(f"Trace segments data file not found {file_path}")
+                return None, None
+
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
+    
+            self.log(f"Loaded Trace segments data from file {file_path}")
+        else:
+            data = self.load_history_index("trace_segments", index)
+            
+        segments = data["segments"]
+        return segments
+
+
+    def save_run_segments(self, segments: list[RunSegment], file_path=None):
+        data = {"segments": segments}
+        if file_path:
+            # Ensure folder exists
+            folder = os.path.dirname(file_path)
+            if folder and not os.path.exists(folder):
+                self.log(f"Create folder {folder}")
+                os.makedirs(folder)
+
+            with open(file_path, "wb") as f:
+                pickle.dump(data, f)
+            self.log(f"Saved Run segments data to file {file_path}")
+        
+        else:
+            self.save_history("run_segments", data)
+
+    def load_run_segments(self, file_path=None, index=-1):
+        if file_path:
+            if not os.path.exists(file_path):
+                self.log(f"Run segments data file not found {file_path}")
+                return None, None
+
+            with open(file_path, "rb") as f:
+                data = pickle.load(f)
+    
+            segments = data["segments"]
+            self.log(f"Loaded Run segments data from file {file_path}")
+        else:
+            data = self.load_history_index("run_segments", index)
+            
+        segments = data["segments"]
         return segments
 
 

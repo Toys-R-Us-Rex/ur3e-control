@@ -298,34 +298,39 @@ class Calibration:
         self.ds = datastore
         self.robot_ip = robot_ip
 
+    def load_and_log(self, path: str | None = None):
+        tcps, tcp_offset = self.ds.load_calibration(path)
+        self.ds.save_calibration(tcps, tcp_offset)
+        self.ds.log_calibration(tcps, tcp_offset)
+        return tcps, tcp_offset
+
     def run(self):
         while True:
-            answer = input("Do you want to run a robot calibration? y/n\n")
-            if answer == "y":
-                successed = launch_calibration(self.robot_ip, self.ds)
-                if not successed:
-                    continue
-                else:
-                    return
 
-            answer = input("Do you have a calibration already saved? y/n\n")
-            if answer == "y":
+            if ask_yes_no("Do you have a calibration already saved? y/n\n"):
                 tcps, tcp_offset = self.ds.load_calibration()
                 self.ds.log_calibration(tcps, tcp_offset)
                 return
-            else:
-                answer = input("Do you want to use the default? y/n\n")
-                if answer == "y":
-                    tcps, tcp_offset = self.ds.load_calibration()
-                    self.ds.save_calibration(tcps, tcp_offset, "save_data/calibration_previous.pkl")
-                    tcps, tcp_offset = self.ds.load_calibration("save_data/calibration_default.pkl")
-                    self.ds.save_calibration(tcps, tcp_offset)
-                    self.ds.log_calibration(tcps, tcp_offset)
-                    return
 
-    def fall_back(self):
-        tcps, tcp_offset = self.ds.load_calibration()
-        self.ds.save_calibration(tcps, tcp_offset, "save_data/calibration_fallback.pkl")
+            if ask_yes_no("Do you want to use the default? y/n\n"):
+                self.ds.log("Load default calibration.")
+                tcps, tcp_offset = self.ds.load_calibration("save_data/calibration_default.pkl")
+                self.ds.save_calibration(tcps, tcp_offset)
+                self.ds.log_calibration(tcps, tcp_offset)
+                return
+
+            if ask_yes_no("Do you want to run a robot calibration? y/n\n"):
+                success = launch_calibration(self.robot_ip, self.ds)
+                if success:
+                    return
+                else:
+                    self.ds.log("Calibration failed. Try again.")
+                    continue
+
+            print("Invalid input. Please answer with 'y' or 'n'.")
+
+    def fallback(self):
+        self.ds.log("Fall back: load default calibration.")
         tcps, tcp_offset = self.ds.load_calibration("save_data/calibration_default.pkl")
         self.ds.save_calibration(tcps, tcp_offset)
         self.ds.log_calibration(tcps, tcp_offset)

@@ -57,31 +57,7 @@ from src.utils import *
 from src.logger import DataStore
 
 from URBasic.iscoin import ISCoin
-
-class AtoB:
-    def __init__(self, T_position, T_orientation):
-        self.T_position = T_position
-        self.T_orientation = T_orientation
-    
-    def __call__(self, p):
-        p = np.asarray(p)
-        point = p[:3]
-        normal = p[3:]
-
-        # Transform point
-        p_h = np.array([*point, 1.0])
-        p_new = self.T_position @ p_h
-
-        # Transform normal
-        n_h = np.array([*normal, 1.0])
-        n_new = (self.T_orientation @ n_h)[:3]
-        n_new /= np.linalg.norm(n_new)
-
-        r_new = normal_to_rotvec(n_new)
-
-        return [*p_new[:3], *r_new]
-        
-
+      
 def collect_data(robot_arm, world_measure):
     if len(world_measure) < 3:
         print("Minimum 3 measure points.")
@@ -236,10 +212,36 @@ class Transformation:
 
     def run(self):
         while True:
-            answer = input("Do you have the transformation already saved? y/n \n")
-            if answer == "y":
+            if ask_yes_no("Do you have the transformation already saved? y/n \n"):
+                self.ds.load_transformation()
                 return
-            
-            answer = input("Do you want to run a robot transformation? y/n \n")
-            if answer == "y":
+
+            if ask_yes_no("Do you want to run a robot transformation? y/n \n"):
                 launch_transformation(self.robot_ip, self.json_calibration, self.ds)
+                return
+
+            if ask_yes_no("You don't have a transformation or can't run one? y/n \n"):
+                self.ds.log("No transformation available.")
+                raise RuntimeError("No transformation available.")
+
+            print("Invalid input, please try again.")
+
+    def fallback(self):
+        self.ds.log("Fall back transformation.")
+
+        if ask_yes_no("Use default transformation (test only)? y/n \n"):
+            self.ds.log("WARNING: Loading default transformation (test only).")
+            obj_to_robot = self.ds.load_transformation("save_data/transformation_default.pkl")
+            self.ds.save_transformation(obj_to_robot)
+            self.ds.log_transformation(obj_to_robot)
+            return
+
+        if ask_yes_no("Use identity (no transformation, test only)? y/n \n"):
+            self.ds.log("WARNING: Using identity transformation (test only).")
+            T_eye = np.eye(4)
+            transform = AtoB(T_eye, T_eye)
+            self.ds.save_transformation(transform)
+            self.ds.log_transformation(transform)
+            return
+
+        raise RuntimeError("Fallback transformation aborted by user.")

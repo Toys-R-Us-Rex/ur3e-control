@@ -244,3 +244,30 @@ def stl_to_obj(pts):
         return np.column_stack([x, z, -y])
 
     raise ValueError("Input must be shape (3,) or (N,3)")
+
+
+def ask_yes_no(prompt: str) -> bool:
+    return input(prompt).strip().lower() == "y"
+    
+class AtoB:
+    def __init__(self, T_position, T_orientation):
+        self.T_position = T_position
+        self.T_orientation = T_orientation
+    
+    def __call__(self, p):
+        p = np.asarray(p)
+        point = p[:3]
+        normal = p[3:]
+
+        # Transform point
+        p_h = np.array([*point, 1.0])
+        p_new = self.T_position @ p_h
+
+        # Transform normal
+        n_h = np.array([*normal, 1.0])
+        n_new = (self.T_orientation @ n_h)[:3]
+        n_new /= np.linalg.norm(n_new)
+
+        r_new = normal_to_rotvec(n_new)
+
+        return [*p_new[:3], *r_new]

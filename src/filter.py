@@ -1,6 +1,7 @@
 from src.logger import DataStore
 from src.segment import TraceSegment, SideType
 from src.computation import load_traces
+from src.utils import ask_yes_no
 
 class Filter:
     def __init__(self, dataStore: DataStore, json_path):
@@ -13,6 +14,11 @@ class Filter:
         Assumes traces have 'path' as list of [point, normal], where point is [x, y, z].
         Adjust the axis/threshold if the duck is oriented differently (e.g., use X or Z).
         """
+        if ask_yes_no("Do you already extract the traces? y/n \n"):
+            s = self.ds.load_trace_segments()
+            self.ds.log_trace_segment(s)
+            return
+        
         traces, _ = load_traces(self.json_path)
         left_traces = []
         right_traces = []
@@ -25,12 +31,14 @@ class Filter:
         
             if avg_y >= 0:
                 left_traces.append(
-                    TraceSegment(waypoints, color, SideType.LEFT)
+                    TraceSegment(color, SideType.LEFT, waypoints)
                 )
             else:
                 right_traces.append(
-                    TraceSegment(waypoints, color, SideType.RIGHT)
+                    TraceSegment(color, SideType.RIGHT, waypoints)
                 )
             break
-
-        self.ds.save_trace_segment(left_traces+right_traces)
+        
+        s = left_traces+right_traces
+        self.ds.save_trace_segments(s)
+        self.ds.log_trace_segment(s)

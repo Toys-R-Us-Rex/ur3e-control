@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import time
+
 from src.logger import DataStore
 from src.calibration import Calibration
 from src.transformation import Transformation
@@ -8,10 +10,6 @@ from src.filter import Filter
 #from src.pathfinding import Pathfinding
 from src.gazebo import Gazebo
 from src.robot import Robot
-
-
-record = DataStore()
-record.log("Start robot main")
 
 # Create a new ISCoin object
 # UR3e1 IP (closest to window): 10.30.5.158
@@ -52,16 +50,17 @@ def run_stage(stage_name, stage_obj, datastore, on_error="stop"):
             raise
 
 def main():
-    ds = DataStore("save_data_test/")
+    day = time.strftime("%Y%m%d")
+    ds = DataStore(f"save_data_test/{day}/")
     ds.log("Pipeline started")
 
     run_stage("Calibration", Calibration(ds, ROBOT_IP), ds, on_error="continue")
-    run_stage("ComputeTransformation", Transformation(ds, ROBOT_IP, JSON_CALIBRATION), ds, on_error="stop")
+    run_stage("ComputeTransformation", Transformation(ds, ROBOT_IP, JSON_CALIBRATION), ds, on_error="fallback")
     run_stage("Filter", Filter(ds, JSON_OBJECT), ds, on_error="stop")
     #run_stage("Conversion", Conversion(ds, JSON_OBJECT), ds, on_error="stop")
     #run_stage("Pathfinding", Pathfinding(ds), ds, on_error="stop")
-    run_stage("Gazebo", Gazebo(ds), ds, on_error="continue")
-    run_stage("Run Robot", Robot(ds,ROBOT_IP), ds, on_error="stop")
+    run_stage("Gazebo", Gazebo(ds), ds, on_error="fallback")
+    run_stage("Run Robot", Robot(ds,ROBOT_IP), ds, on_error="continue")
 
     ds.log("Pipeline finished")
 
