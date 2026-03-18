@@ -90,19 +90,33 @@ class SimGripper:
     #     self._obj = 3  # arrived, no object
     #     return True
 
+      
+    def isMoving(self) -> bool:
+        '''
+        Check if the gripper is moving
+        '''
+        return False
+    
+    def waitUntilStopped(self) -> None:
+        '''
+        Wait until the gripper is stopped
+        '''
+        time.sleep(0.1)
+
     def open(self, speed=255, force=50) -> bool:
         """
         Open the gripper if activated.
         Returns false on failure
         """
-
         time.sleep(0.1)
+        print("SimGripper opened")
         return self.isActivated()
 
     def close(self, speed=255, force=50):
         """
-        Clost the gripper if activated.
+        Close the gripper if activated.
         Returns false on failure
         """
         time.sleep(0.1)
+        print("SimGripper closed")
         return self.isActivated()
