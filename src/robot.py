@@ -6,15 +6,23 @@ from URBasic.waypoint6d import TCP6D, Joint6D
 
 from duckify_simulation.duckify_sim.robot_control import SimRobotControl
 
+from src.config import *
+
 def move_simple(robot: SimRobotControl|UrScript, motion, ds: DataStore = None):
-    for m in motion:
-        if isinstance(m, TCP6D):
-            if not robot.movel(m, wait=True) and ds:
-                ds.log("TCP not reached: ", str(m))
-        
-        elif isinstance(m, Joint6D):
-            if not robot.movej(m, wait=True) and ds:
-                ds.log("JOINT not reached: ", str(m))
+    robot.movej(HOMEJ)
+    for segment in motion:
+        for m in segment.waypoints:
+            print(m)
+            if isinstance(m, TCP6D):
+                if not robot.movel(m, wait=True) and ds:
+                    ds.log("TCP not reached: ", str(m))
+            
+            elif isinstance(m, Joint6D):
+                if not robot.movej(m, wait=True) and ds:
+                    ds.log("JOINT not reached: ", str(m))
+            
+            else:
+                raise NotImplemented("Only TCP6D or JOINT6D points allowed.")
 
 class Robot:
     def __init__(self, datastore: DataStore, robot_ip: str):

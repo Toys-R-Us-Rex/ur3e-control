@@ -6,8 +6,9 @@ from URBasic.waypoint6d import TCP6D, Joint6D
 
 from duckify_simulation.duckify_sim import DuckifySim
 from duckify_simulation.duckify_sim.robot_control import SimRobotControl
+from src.segment import Segment
 
-def test_waypoints(waypoints, ds: DataStore):
+def test_waypoints(waypoints: list[Segment], ds: DataStore):
     try:
         duckify_sim = DuckifySim()
         robot_sim = duckify_sim.robot_control
@@ -34,14 +35,12 @@ class Gazebo:
         self.ds = datastore
 
     def run(self):
-        waypoints = self.ds.load_waypoints()
-        home = Joint6D.createFromRadians(1.1859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
-        waypoints.insert(0, home)
+        waypoints = self.ds.load_tcp_segments()
 
         answer = input("Do you want to skip Gazebo test? y/n \n")
         if answer == 'y':
             self.ds.log("Gazebo test skipped.")
-            return
+            raise RuntimeError("You can not avoid gazebot.")
 
         gazebo = test_waypoints(waypoints, self.ds)
 

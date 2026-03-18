@@ -7,6 +7,10 @@ Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 # Collision margin
 COLLISION_MARGIN = 0       # margin for obstacle collision checks
 
+# Default home position
+from URBasic.waypoint6d import Joint6D
+HOMEJ = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
+
 # Pathfinding parameters
 SAFE_MARGIN = 0.005
 PUSH_STEP   = 0.005    # midpoint push increment
@@ -68,7 +72,7 @@ TCPS_20 = [
 ]
 
 # Default object-to-robot transform parameters
-OBJ2ROBOT_RZ_DEG       = 0.0
+OBJ2ROBOT_RZ_DEG       = 180.0
 OBJ2ROBOT_TRANSLATION  = (0.32, -0.4, 0.155)
 OBJ2ROBOT_SCALE        = 0.001          # mm → meters
 

@@ -27,7 +27,7 @@ class Filter:
             ys, color = [pt[1] for pt, _ in path], trace['color']
             avg_y = sum(ys) / len(ys) if ys else 0
 
-            waypoints = [pt[0] + pt[1] for pt in path]
+            waypoints = [pt + pn for pt, pn in path]
         
             if avg_y >= 0:
                 left_traces.append(
@@ -37,7 +37,7 @@ class Filter:
                 right_traces.append(
                     TraceSegment(color, SideType.RIGHT, waypoints)
                 )
-            break
+                
         
         s = left_traces+right_traces
         self.ds.save_trace_segments(s)
