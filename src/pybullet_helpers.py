@@ -185,7 +185,7 @@ def find_hovers(checker, robot, surface_tcps_per_trace, runs_per_trace, surface_
     return validated_runs
 
 
-def visualize_plan(checker, segments, debug=True):
+def visualize_plan(checker, robot, segments, debug=True):
     cid = checker.cid
     print("\nVisualizing final plan step by step...")
     print("  TRAVEL = blue, APPROACH = orange, DRAW = green\n")
@@ -194,11 +194,12 @@ def visualize_plan(checker, segments, debug=True):
         color = SEGMENT_COLORS[seg.motion_type]
         width = 3 if seg.motion_type == MotionType.DRAW else 2
         label = seg.motion_type.name
-        print(f"  Segment {i}: {label} ({len(seg.waypoints)} wps)  "
-              f"{fmt_tcp(seg.waypoints[0])} -> {fmt_tcp(seg.waypoints[-1])}")
-        if debug:
-            input(f"    Press ENTER to draw {label}...")
-        draw_line_strip(cid, seg.waypoints, color, width)
+        tcp_wps = [robot.get_fk(q) for q in seg.waypoints]
+        print(f"  Segment {i}: {label} ({len(tcp_wps)} wps)  "
+              f"{fmt_tcp(tcp_wps[0])} -> {fmt_tcp(tcp_wps[-1])}")
+        # if debug:
+        #     input(f"    Press ENTER to draw {label}...")
+        draw_line_strip(cid, tcp_wps, color, width)
 
     print(f"\n  {len(segments)} segments visualized")
 
@@ -210,10 +211,10 @@ def animate_plan(checker, segments, delay=0.02):
 
     for i, seg in enumerate(segments):
         label = seg.motion_type.name
-        n = len(seg.joint_waypoints) if seg.joint_waypoints else 0
+        n = len(seg.waypoints) if seg.waypoints else 0
         print(f"  Segment {i}: {label} ({n} joint waypoints)")
-        if seg.joint_waypoints:
-            for jw in seg.joint_waypoints:
+        if seg.waypoints:
+            for jw in seg.waypoints:
                 q = jw.toList() if hasattr(jw, 'toList') else list(jw)
                 checker.set_joint_angles(q)
                 if delay > 0:

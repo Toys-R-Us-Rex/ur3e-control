@@ -442,14 +442,11 @@ def print_segment_summary(segments):
 def collect_joint_waypoints(segments):
     all_joint_waypoints = []
     for i, seg in enumerate(segments):
-        has_joints = seg.joint_waypoints is not None
         print(f"\n  Segment {i}: {seg.motion_type.name}  ({len(seg.waypoints)} waypoints)")
-        for j, wp in enumerate(seg.waypoints):
-            if has_joints and j < len(seg.joint_waypoints):
-                jw = seg.joint_waypoints[j]
-                jnt_vals = jw.toList()
-                all_joint_waypoints.append(jw)
-                print(f"    WP {j:3d}  J=[{', '.join(f'{v:+.4f}' for v in jnt_vals)}]")
+        for j, jw in enumerate(seg.waypoints):
+            jnt_vals = jw.toList()
+            all_joint_waypoints.append(jw)
+            print(f"    WP {j:3d}  J=[{', '.join(f'{v:+.4f}' for v in jnt_vals)}]")
 
     print(f"\n  {len(segments)} segments, {len(all_joint_waypoints)} joint waypoints.")
     return all_joint_waypoints

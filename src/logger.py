@@ -102,7 +102,7 @@ class DataStore:
         files = [f for f in os.listdir(self.data_path) if f.startswith(key + "_")]
         if not files:
             return 0
-        indices = [int(f.split("_")[-1].split(".")[0]) for f in files]
+        indices = [int(f.split("_")[-1].split(".")[0]) for f in files if f.split("_")[-1].split(".")[0].isdigit()]
         return max(indices) + 1
     
     def save_history(self, key, obj):

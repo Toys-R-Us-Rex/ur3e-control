@@ -41,7 +41,7 @@ DEBUG = True
 
 record = DataStore()
 home = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
-file_path = "duckify_simulation/paths/duck_uv-fancy_test_duck-trace_v2.json"
+file_path = "duckify_simulation/paths/duck_uv-test_3_circle_full-trace.json"
 
 # Stage 0: setup robot
 robot = SimRobotControl()
@@ -102,14 +102,14 @@ input("\nPress ENTER to visualize the final plan...")
 
 # Stage 8: visualize
 clear_bodies(checker.cid, run_spheres)
-visualize_plan(checker, segments, debug=DEBUG)
+visualize_plan(checker, robot, segments, debug=DEBUG)
 
 # Stage 8.5: animate
 animate_plan(checker, segments)
 
-# Stage 9: remove waypoints
+# Stage 9: collect and export waypoints
 print("\n" + "==============")
-print("Waypoint removal")
+print("Waypoint export")
 print("=" * 60)
 all_joint_waypoints = collect_joint_waypoints(segments)
 

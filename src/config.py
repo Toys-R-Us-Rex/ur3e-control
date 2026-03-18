@@ -72,7 +72,7 @@ TCPS_20 = [
 ]
 
 # Default object-to-robot transform parameters
-OBJ2ROBOT_RZ_DEG       = 0.0
+OBJ2ROBOT_RZ_DEG       = 180.0
 OBJ2ROBOT_TRANSLATION  = (0.32, -0.4, 0.155)
 OBJ2ROBOT_SCALE        = 0.001          # mm → meters
 
