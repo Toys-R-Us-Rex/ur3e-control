@@ -98,10 +98,10 @@ def collect_data(robot_arm, world_measure):
 
     return np.array(tcps)
 
-def create_transformation(A, B) -> AtoB:
+def create_transformation(A, B):
     """
-    Computes the rigid transform
-    that maps A to B using the Kabsch algorithm.
+    Computes the similarity transform (scale + rotation + translation)
+    that maps A to B using a scaled Kabsch algorithm.
     A and B are Nx3 arrays of corresponding points.
     """
 
@@ -132,15 +132,19 @@ def create_transformation(A, B) -> AtoB:
         Vt[2, :] *= -1
         R = Vt.T @ U.T
 
-    # 6. Compute translation
-    t = centroid_B - R @ centroid_A
+    # 6. Compute uniform scale
+    var_A = np.sum(AA ** 2)
+    scale = np.sum(S) / var_A
 
-    # 7. Build 4×4 matrix
+    # 7. Compute translation
+    t = centroid_B - scale * (R @ centroid_A)
+
+    # 8. Build 4×4 matrix
     T = np.eye(4)
-    T[:3, :3] = R
+    T[:3, :3] = scale * R
     T[:3, 3] = t
 
-    # Normal transform (4×4 homogeneous)
+    # Normal transform (rotation only)
     R_normal = np.linalg.inv(R).T
     T_normal = np.eye(4)
     T_normal[:3, :3] = R_normal
