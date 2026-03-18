@@ -70,6 +70,7 @@ class CollisionChecker:
                 fileName=str(obs['path']),
                 meshScale=obs.get('scale', [1, 1, 1]),
                 physicsClientId=self.cid,
+                flags=p.GEOM_FORCE_CONCAVE_TRIMESH
             )
             vis_shape = -1
             if gui:
