@@ -395,6 +395,8 @@ dependencies = [
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "opencv-python" },
     { name = "pillow" },
+    { name = "pyb-utils" },
+    { name = "pybullet" },
     { name = "requests" },
     { name = "rtree" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -416,6 +418,8 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2.3,<3" },
     { name = "opencv-python", specifier = ">=4.11.0.86,<5" },
     { name = "pillow", specifier = ">=11.1.0,<12" },
+    { name = "pyb-utils", specifier = ">=2.4.2" },
+    { name = "pybullet", specifier = ">=3.2.7" },
     { name = "requests", specifier = ">=2.32.3,<3" },
     { name = "rtree", specifier = ">=1.0,<2" },
     { name = "rtree", specifier = ">=1.4.1" },
@@ -796,6 +800,36 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cd/05/0a34433a064256a578f1783a10da6df098ceaa4a57bbeaa96a6c0352786b/pure_eval-0.2.3.tar.gz", hash = "sha256:5f4e983f40564c576c7c8635ae88db5956bb2229d7e9237d03b3c0b0190eaf42", size = 19752, upload-time = "2024-07-21T12:58:21.801Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl", hash = "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0", size = 11842, upload-time = "2024-07-21T12:58:20.04Z" },
+]
+
+[[package]]
+name = "pyb-utils"
+version = "2.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama" },
+    { name = "matplotlib" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "opencv-python" },
+    { name = "pillow" },
+    { name = "pybullet" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b2/60/3b0d8dbe5d22949905406a17556f0213f5e0af0bc9b47e7445430e8ff8df/pyb_utils-2.4.2.tar.gz", hash = "sha256:0776371867da65b4d2ee09ba01335ebb29a71b68e5c9bbbd9f3a12786d918c4d", size = 136362, upload-time = "2025-12-27T17:40:37.353Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/2f/d14fbf45fac36f49e609bd54b249f8421c5ac73147c567604ac996c63f3f/pyb_utils-2.4.2-py3-none-any.whl", hash = "sha256:98c9651eb9ea4a2c10e187fa76118000732e25baaf4e1538c7edc21ef8cb381e", size = 27452, upload-time = "2025-12-27T17:40:38.276Z" },
+]
+
+[[package]]
+name = "pybullet"
+version = "3.2.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/95/b9a98cd4ed948d4f25a7d0b13cb0c1f87e58dc6d113be9e18940641eb25f/pybullet-3.2.7.tar.gz", hash = "sha256:042879db8d101ac7590dee475fc6aded508b85fe1273fdbbfde1d88bd200e14f", size = 80508379, upload-time = "2025-01-30T00:34:00.527Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/e0/45278c039635529fec27814e6ad9c5a87030161f5ce714e017dd70f562f9/pybullet-3.2.7-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:814e6b0c035a634b5c46f69065effb085cc451886dda4140576be2f34b461940", size = 103193654, upload-time = "2025-01-30T00:18:52.555Z" },
+    { url = "https://files.pythonhosted.org/packages/20/78/a23a300110968586a9dbfd516ccd66906450d57567c9f60cddaeaaf10fa6/pybullet-3.2.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5d858abf7c12a21ef3ed351cf81dac1b5e486ec25c9ab59bfc84beb89034edff", size = 103196742, upload-time = "2025-01-30T00:19:07.063Z" },
 ]
 
 [[package]]
