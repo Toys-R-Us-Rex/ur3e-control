@@ -10,7 +10,7 @@ from URBasic import TCP6D
 from src.config import (
     JOINT_LIMITS, TCP_Y_MAX, TCP_Z_MIN, TCP_Z_MAX,
     UR3E_MAX_REACH, FREE_TRAVEL_STEP, LINK_Z_MIN,
-    DRAWING_ANGLE, COLLISION_MARGIN
+    DRAWING_ANGLE, COLLISION_MARGIN, SELF_COLLISION_MARGIN
 )
 from src.kinematics import get_all_ik_solutions
 
@@ -107,8 +107,8 @@ class CollisionChecker:
         for idx, angle in zip(self.joint_indices, q):
             p.resetJointState(self.robot_id, idx, float(angle), physicsClientId=self.cid)
 
-    def in_self_collision(self):
-        return self.self_detector.in_collision(margin=0)
+    def in_self_collision(self, margin=SELF_COLLISION_MARGIN):
+        return self.self_detector.in_collision(margin=margin)
 
     def in_obstacle_collision(self, margin=COLLISION_MARGIN):
         if self.obstacle_detector is None:

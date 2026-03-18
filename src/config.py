@@ -4,8 +4,9 @@ MIT License
 Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 '''
 
-# Collision margin
-COLLISION_MARGIN = 0       # margin for obstacle collision checks
+# Collision margins
+COLLISION_MARGIN = 0            # margin for obstacle collision checks
+SELF_COLLISION_MARGIN = 0.01   # margin for self-collision checks (5mm safety buffer)
 
 # Default home position
 from URBasic.waypoint6d import Joint6D

@@ -7,6 +7,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from duckify_simulation.duckify_sim.kinematics import forward_kinematics
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 logging.basicConfig(level=logging.WARNING)
 
@@ -22,6 +24,7 @@ from src.computation import (
     load_and_convert_to_tcp,
     assemble_segments,
     collect_joint_waypoints,
+    smoothing,
 )
 from src.pybullet_helpers import (
     preview_traces,
@@ -42,14 +45,16 @@ VIS_DELAY  = 0.1    # seconds between each joint step during verification animat
 
 record = DataStore()
 home = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
-file_path = "duckify_simulation/paths/duck_uv-test_2_circle-trace.json"
+# file_path = "duckify_simulation/paths/duck_uv-test_1_triangle-trace.json"
+# file_path = "duckify_simulation/paths/duck_uv-test_2_circle-trace.json"
+file_path = "duckify_simulation/paths/duck_uv-dot-trace.json"
 
 # Stage 0: setup robot
 robot = SimRobotControl()
 _, tcp_offset = record.load_calibration("save_data/calibration_default.pkl")
 robot.set_tcp(tcp_offset)
 
-# Stage 3 (always): launch PyBullet
+# Stage 3: launch PyBullet
 obj2robot = load_obj2robot(record)
 pos, quat, scale = extract_pybullet_pose(obj2robot)
 for obs in OBSTACLE_STLS:
@@ -59,18 +64,43 @@ for obs in OBSTACLE_STLS:
 
 checker = setup_checker(OBSTACLE_STLS, gui=True)
 
+# to modify the rotation central point on the GUI
 pb.resetDebugVisualizerCamera(
     cameraDistance=0.6, cameraYaw=45, cameraPitch=-30,
     cameraTargetPosition=pos, physicsClientId=checker.cid,
 )
 
+# print(type(home))
+
 checker.set_joint_angles(home.toList())
 print(f"\nSet PyBullet robot to home: {home.toList()}")
+
+
+# input("Debug1 - round trip")
+#
+# print("Model correction:\n", robot._model_correction)
+# print("TCP offset:\n", robot._tcp_offset)
+#
+#
+# from src.kinematics import forward_kinematics_matrix, matrix_to_tcp6d
+# from src.kinematics import get_inverse_kin
+#
+# fk = forward_kinematics_matrix(home.toList()) @ robot._tcp_offset
+# tcp = matrix_to_tcp6d(fk)
+#
+# q = get_inverse_kin(tcp, home, robot._tcp_offset, robot._model_correction)
+#
+# print("Q is : ", q)
+#
+# if q is not None:
+#   checker.set_joint_angles(q.toList())
+#
+# input("Debug2")
 
 if not JUMP_TO_VIS:
     # Stage 1+2: load traces and convert to TCP
     surface_tcps_per_trace, traces, data = load_and_convert_to_tcp(file_path, obj2robot, max_pts=1000)
-    print(surface_tcps_per_trace)
+    # print(len(surface_tcps_per_trace))
     print(f"Loaded {len(traces)} traces, transformed to TCP6D")
 
     # Preview traces
@@ -98,7 +128,14 @@ if not JUMP_TO_VIS:
         input("Press ENTER to continue to pathfinding...")
 
     # Stage 7: assemble segments
-    segments = assemble_segments(robot, checker, validated_runs, surface_joints, home)
+    segments = assemble_segments(robot, checker, validated_runs, surface_joints, home,
+                                     surface_tcps_per_trace=surface_tcps_per_trace)
+
+    smoothing(robot, checker, segments, home)
+
+
+
+
     input("\nPress ENTER to visualize the final plan...")
 
     # Stage 8: visualize
@@ -109,9 +146,6 @@ if not JUMP_TO_VIS:
     animate_plan(checker, segments, delay=VIS_DELAY)
 
     # Stage 9: collect and export waypoints
-    print("\n" + "==============")
-    print("Waypoint export")
-    print("=" * 60)
     all_joint_waypoints = collect_joint_waypoints(segments)
 
     # Stage 10: save

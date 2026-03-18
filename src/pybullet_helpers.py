@@ -194,11 +194,12 @@ def visualize_plan(checker, robot, segments, debug=True):
         color = SEGMENT_COLORS[seg.motion_type]
         width = 3 if seg.motion_type == MotionType.DRAW else 2
         label = seg.motion_type.name
-        tcp_wps = [robot.get_fk(q) for q in seg.waypoints]
+        if seg.tcp_waypoints:
+            tcp_wps = seg.tcp_waypoints
+        else:
+            tcp_wps = [robot.get_fk(q) for q in seg.waypoints]
         print(f"  Segment {i}: {label} ({len(tcp_wps)} wps)  "
               f"{fmt_tcp(tcp_wps[0])} -> {fmt_tcp(tcp_wps[-1])}")
-        # if debug:
-        #     input(f"    Press ENTER to draw {label}...")
         draw_line_strip(cid, tcp_wps, color, width)
 
     print(f"\n  {len(segments)} segments visualized")
