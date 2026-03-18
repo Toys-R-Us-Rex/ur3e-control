@@ -186,6 +186,7 @@ class DataStore:
 
     def load_worldtcp(self, file_path=None, index=-1):
         if file_path:
+
             if not os.path.exists(file_path):
                 self.log(f"Worldtcp data file not found {file_path}")
                 return None, None
@@ -193,10 +194,9 @@ class DataStore:
             with open(file_path, "rb") as f:
                 data = pickle.load(f)
     
-            self.log(f"Loaded worldrcp data from file {file_path}")
+            self.log(f"Loaded worldtcp data from file {file_path}")
         else:
-            data = self.load_history_index("worldrcp", index)
-        
+            data = self.load_history_index("worldtcp", index)
         pworld = data["pworld"]
         tcps = data["tcps"]
         return pworld, tcps
@@ -235,7 +235,6 @@ class DataStore:
         T_normal = data["T_normal"]
         return AtoB(T_position, T_normal)
     
-
 
     def save_waypoints(self, waypoints: list[TCP6D|Joint6D], file_path=None):
         data = {"waypoints": waypoints}
