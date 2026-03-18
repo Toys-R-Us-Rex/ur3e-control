@@ -1,8 +1,8 @@
 {
-    "explanations":"This test n.1 is a simple triangle on a wing",
+    "explanations":"Test n.1 : a simple triangle on the right wing",
     "generated_at": "2026-03-17T14:12:09.390716",
-    "model": "C:\\Users\\rouge\\Documents\\_HEI\\_S6\\Duckify\\assets\\models\\duck_uv.obj",
-    "texture": "C:\\Users\\rouge\\Documents\\_HEI\\_S6\\Duckify\\assets\\textures\\test\\test_1_triangle.jpg",
+    "model": "models\\duck_uv.obj",
+    "texture": "textures\\test\\test_1_triangle.jpg",
     "traces": [
         {
             "color": 0,
