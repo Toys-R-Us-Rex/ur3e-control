@@ -8,21 +8,48 @@ from duckify_simulation.duckify_sim.robot_control import SimRobotControl
 
 from src.config import *
 
-def move_simple(robot: SimRobotControl|UrScript, motion, ds: DataStore = None):
+import matplotlib.pyplot as plt
+
+def move_simple(robot: SimRobotControl | UrScript, motion, ds: DataStore = None):
     robot.movej(HOMEJ)
-    for segment in motion:
-        for m in segment.waypoints:
-            print(m)
+
+    # Create six empty joint lists
+    j1, j2, j3, j4, j5, j6 = ([] for _ in range(6))
+
+    for s, segment in enumerate(motion):
+        for i, m in enumerate(segment.waypoints):
+            print(s, i, m)
             if isinstance(m, TCP6D):
                 if not robot.movel(m, wait=True) and ds:
                     ds.log("TCP not reached: ", str(m))
-            
+
             elif isinstance(m, Joint6D):
+                # Collect joint values
+                j1.append(m.j1)
+                j2.append(m.j2)
+                j3.append(m.j3)
+                j4.append(m.j4)
+                j5.append(m.j5)
+                j6.append(m.j6)
+
                 if not robot.movej(m, wait=True) and ds:
                     ds.log("JOINT not reached: ", str(m))
-            
+
             else:
-                raise NotImplemented("Only TCP6D or JOINT6D points allowed.")
+                raise NotImplementedError("Only TCP6D or JOINT6D points allowed.")
+
+    # Plot joint evolution
+    fig, axs = plt.subplots(6, sharex=True)
+    joint_lists = [j1, j2, j3, j4, j5, j6]
+
+    for i, j in enumerate(joint_lists):
+        axs[i].plot(j)
+        axs[i].set_ylabel(f"J{i+1}")
+
+    axs[-1].set_xlabel("Waypoint index")
+    plt.tight_layout()
+    plt.show()
+
 
 class Robot:
     def __init__(self, datastore: DataStore, robot_ip: str):

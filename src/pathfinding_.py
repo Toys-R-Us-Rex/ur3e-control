@@ -9,7 +9,7 @@ import pybullet as pb
 from src.safety import setup_checker
 from src.transformation import extract_pybullet_pose
 from src.pybullet_helpers import clear_bodies, find_hovers, preview_traces, split_and_visualize, validate_and_visualize
-from src.computation import assemble_segments
+from src.computation import assemble_segments, smoothing
 from src.segment import SideType
 
 class Pathfinding:
@@ -70,6 +70,7 @@ class Pathfinding:
         runs_per_trace, _ = split_and_visualize(checker, surface_tcps_per_trace, valid_masks)
         validated_runs = find_hovers(checker, robot, surface_tcps_per_trace, runs_per_trace, surface_joints)
         segments = assemble_segments(robot, checker, validated_runs, surface_joints, HOMEJ)
+        smoothing(robot, checker, segments, HOMEJ)
 
         self.ds.save_joint_segments(segments)
         

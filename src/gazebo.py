@@ -35,7 +35,7 @@ class Gazebo:
         self.ds = datastore
 
     def run(self):
-        waypoints = self.ds.load_tcp_segments()
+        waypoints = self.ds.load_joint_segments()
 
         answer = input("Do you want to skip Gazebo test? y/n \n")
         if answer == 'y':
