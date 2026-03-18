@@ -41,3 +41,4 @@ class JointSegment(Segment):
     a: float             # acceleration m/s²
     r: float = 0.0       # blend radius
     waypoints: list[Joint6D] = None  # optional pre-computed Joint6D list
+    tcp_waypoints: list[TCP6D] = None  # corresponding TCP6D poses

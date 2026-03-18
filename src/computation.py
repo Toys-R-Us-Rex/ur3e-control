@@ -340,7 +340,8 @@ def load_and_plan(robot, checker, json_path, obj2robot,
     )
 
 
-def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, home):
+def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, home,
+                      surface_tcps_per_trace=None):
     from src.utils import fmt_tcp
 
     logging.getLogger("src.pathfinding").setLevel(logging.INFO)
@@ -357,6 +358,9 @@ def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, 
 
         print(f"\n  [{current_label}] -> [{entry_label}]")
         print(f"    from {fmt_tcp(current_tcp)}  to {fmt_tcp(h_entry)}")
+        # Resolve surface TCPs for this trace (if available)
+        trace_surface_tcps = surface_tcps_per_trace[trace_i] if surface_tcps_per_trace else None
+
         try:
             travel_wps, travel_joints = compute_positioning_motion(robot, checker, current_tcp, h_entry)
             segments.append(JointSegment(
@@ -365,6 +369,7 @@ def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, 
                 side=SideType.LEFT,
                 v=TRAVEL_V, a=TRAVEL_A,
                 waypoints=travel_joints,
+                tcp_waypoints=travel_wps,
             ))
             print(f"    TRAVEL OK ({len(travel_wps)} wps)")
         except RuntimeError as e:
@@ -373,32 +378,42 @@ def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, 
             continue
 
         print(f"  [{entry_label}] -> [Run{run_i} surface[0]]")
+        approach_down_tcps = None
+        if trace_surface_tcps is not None:
+            approach_down_tcps = [h_entry, trace_surface_tcps[run_start]]
         segments.append(JointSegment(
             motion_type=MotionType.APPROACH,
             color=1,
             side=SideType.LEFT,
             waypoints=[q_entry, trace_surface_joints[run_start]],
-            v=APPROACH_V, a=APPROACH_A
+            v=APPROACH_V, a=APPROACH_A,
+            tcp_waypoints=approach_down_tcps,
         ))
         print(f"    APPROACH down OK")
 
         print(f"  [Run{run_i} surface[0]] -> [Run{run_i} surface[{len(run_surface)-1}]]")
+        draw_tcps = trace_surface_tcps[run_start:run_end + 1] if trace_surface_tcps else None
         segments.append(JointSegment(
             motion_type=MotionType.DRAW,
             color=1,
             side=SideType.LEFT,
             waypoints=trace_surface_joints[run_start:run_end + 1],
-            v=DRAW_V, a=DRAW_A
+            v=DRAW_V, a=DRAW_A,
+            tcp_waypoints=draw_tcps,
         ))
         print(f"    DRAW OK ({len(run_surface)} pts)")
 
         print(f"  [Run{run_i} surface[{len(run_surface)-1}]] -> [{exit_label}]")
+        approach_up_tcps = None
+        if trace_surface_tcps is not None:
+            approach_up_tcps = [trace_surface_tcps[run_end], h_exit]
         segments.append(JointSegment(
             motion_type=MotionType.APPROACH,
             color=1,
             side=SideType.LEFT,
             waypoints=[trace_surface_joints[run_end], q_exit],
-            v=APPROACH_V, a=APPROACH_A
+            v=APPROACH_V, a=APPROACH_A,
+            tcp_waypoints=approach_up_tcps,
         ))
         print(f"    APPROACH up OK")
 
@@ -416,6 +431,7 @@ def assemble_segments(robot, checker, validated_runs, surface_joints_per_trace, 
             side=SideType.LEFT,
             waypoints=travel_joints,
             v=TRAVEL_V, a=TRAVEL_A,
+            tcp_waypoints=travel_wps,
         ))
         print(f"    TRAVEL OK ({len(travel_wps)} wps)")
     except RuntimeError as e:
@@ -439,14 +455,64 @@ def print_segment_summary(segments):
         print(f"  Segment {i}: {seg.motion_type.name:8s} - {n_joints:3d} joint waypoints")
 
 
+# going through the segments and recalculate each IK for each waypoint based on the previous pos
+def smoothing(robot, checker, segments, home):
+
+    qnear = home
+    total_updated = 0
+    total_failed = 0
+
+    for seg_i, seg in enumerate(segments):
+        if seg.tcp_waypoints is None:
+            # No TCP data, keep existing joints, advance qnear to last waypoint
+            if seg.waypoints:
+                qnear = seg.waypoints[-1]
+            continue
+
+        seg_failed = 0
+        new_waypoints = []
+        for wp_i, tcp in enumerate(seg.tcp_waypoints):
+            check_obs = seg.motion_type == MotionType.TRAVEL
+            ok, q, reason, _ = checker.validate_tcp(
+                robot, tcp, qnear=qnear, orientation_search=True,
+                check_obstacle=check_obs,
+            )
+            if ok:
+                new_waypoints.append(q)
+                qnear = q
+                total_updated += 1
+            else:
+                # Keep original joint if re-solve fails
+                if seg.waypoints and wp_i < len(seg.waypoints):
+                    original_q = seg.waypoints[wp_i]
+                    new_waypoints.append(original_q)
+                    # Check what's wrong with the original too
+                    checker.set_joint_angles(original_q.toList())
+                    orig_self = checker.in_self_collision()
+                    orig_obs = checker.in_obstacle_collision()
+                    qnear_list = [f"{v:+.4f}" for v in qnear.toList()]
+                    orig_list = [f"{v:+.4f}" for v in original_q.toList()]
+                    print(f"  Smoothing FAIL: seg {seg_i} ({seg.motion_type.name}) wp {wp_i}/{len(seg.tcp_waypoints)}")
+                    print(f"    TCP:    ({tcp.x:.4f}, {tcp.y:.4f}, {tcp.z:.4f})")
+                    print(f"    Reason: {reason}")
+                    print(f"    qnear:  [{', '.join(qnear_list)}]")
+                    print(f"    orig_q: [{', '.join(orig_list)}]")
+                    print(f"    orig self-col: {orig_self}, orig obs-col: {orig_obs}")
+                    qnear = original_q
+                total_failed += 1
+                seg_failed += 1
+
+        seg.waypoints = new_waypoints
+        if seg_failed:
+            print(f"  Segment {seg_i} ({seg.motion_type.name}): {seg_failed}/{len(seg.tcp_waypoints)} failed")
+
+        seg.waypoints = new_waypoints
+
+    print(f"\nSmoothing done: {total_updated} updated, {total_failed} kept original")
+
 def collect_joint_waypoints(segments):
     all_joint_waypoints = []
-    for i, seg in enumerate(segments):
-        print(f"\n  Segment {i}: {seg.motion_type.name}  ({len(seg.waypoints)} waypoints)")
-        for j, jw in enumerate(seg.waypoints):
-            jnt_vals = jw.toList()
+    for seg in segments:
+        for jw in seg.waypoints:
             all_joint_waypoints.append(jw)
-            print(f"    WP {j:3d}  J=[{', '.join(f'{v:+.4f}' for v in jnt_vals)}]")
-
-    print(f"\n  {len(segments)} segments, {len(all_joint_waypoints)} joint waypoints.")
     return all_joint_waypoints
