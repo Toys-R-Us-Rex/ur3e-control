@@ -17,7 +17,7 @@ from src.robot import Robot
 # UR3e2 IP: 10.30.5.159
 ROBOT_IP = "10.30.5.158"
 
-JSON_OBJECT = "duckify_simulation/paths/trapezoid_letters-trapezoid_letters-trace.json"#"duckify_simulation/paths/duck_uv-dot-trace.json"
+JSON_OBJECT = "duckify_simulation/paths/duck_uv-test_2_circle-trace.json"
 JSON_CALIBRATION = "duckify_simulation/paths/calibration_socle.json"#"duckify_simulation/paths/socle.json"
 
 

@@ -99,22 +99,43 @@ def collect_data(robot_arm, world_measure):
     return np.array(tcps)
 
 def create_transformation(A, B) -> AtoB:
+    """
+    Computes the rigid transform
+    that maps A to B using the Kabsch algorithm.
+    A and B are Nx3 arrays of corresponding points.
+    """
+
     A = np.asarray(A)[:, :3]
     B = np.asarray(B)[:, :3]
     assert A.shape == B.shape
     N = A.shape[0]
 
-    # Build matrix for affine solve: [A | 1]
-    P = np.hstack([A, np.ones((N, 1))])  # Nx4
+    # 1. Compute centroids
+    centroid_A = A.mean(axis=0)
+    centroid_B = B.mean(axis=0)
 
-    # Solve P @ X = B, where X is 4×3 (R^T and t)
-    X, _, _, _ = np.linalg.lstsq(P, B, rcond=None)
+    # 2. Center the points
+    AA = A - centroid_A
+    BB = B - centroid_B
 
-    # Extract R and t
-    R = X[:3, :].T   # 3×3
-    t = X[3, :]      # 3
+    # 3. Compute covariance matrix
+    H = AA.T @ BB
 
-    # Build full 4×4 affine matrix
+    # 4. SVD
+    U, S, Vt = np.linalg.svd(H)
+
+    # 5. Compute rotation
+    R = Vt.T @ U.T
+
+    # Fix improper rotation (reflection)
+    if np.linalg.det(R) < 0:
+        Vt[2, :] *= -1
+        R = Vt.T @ U.T
+
+    # 6. Compute translation
+    t = centroid_B - R @ centroid_A
+
+    # 7. Build 4×4 matrix
     T = np.eye(4)
     T[:3, :3] = R
     T[:3, 3] = t
@@ -202,7 +223,7 @@ def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
     tcp = TCP6D.createFromMetersRadians( *obj2robot(test))
     ds.log(f"Conversion test; {test} give {tcp}")
     print(f"Conversion test; {test} give {tcp}")
-    if not ask_yes_no("Do you want to test on the robot? y/n \n"):
+    if not ask_yes_no("Do you want to test on the Gazebo? y/n \n"):
         return
     
     duckify_sim = DuckifySim()
@@ -210,8 +231,8 @@ def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
     _, tcp_offset = ds.load_calibration()
     robot_sim.set_tcp(tcp_offset)
     robot_sim.movej(HOMEJ)
-    print(robot_sim.get_actual_tcp_pose())
     robot_sim.movel(tcp)
+    robot.movej(HOMEJ)
     
     if not ask_yes_no("Do you want to test on the robot? y/n \n"):
         return
@@ -222,6 +243,7 @@ def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
     robot.set_tcp(tcp_offset)
     robot.movej(HOMEJ)
     robot.movel(tcp)
+    robot.movej(HOMEJ)
 
 
 class Transformation:
