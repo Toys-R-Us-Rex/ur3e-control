@@ -125,6 +125,14 @@ class SimRobotControl:
 
     # -- Movement commands ---------------------------------------------------
 
+    def freedrive_mode(self):
+        print("Ignoring freedrive mode in simulation")
+        return None
+
+    def end_freedrive_mode(self):
+        print("Ignoring end freedrive mode in simulation")
+        return None
+    
     def movej(self, joints, a=1.4, v=1.05, t=0, r=0, wait=True):
         """Move the robot to a joint position (joint-space motion).
 
