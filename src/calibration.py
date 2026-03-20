@@ -46,6 +46,7 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 import numpy as np
 
 from src.utils import *
+from src.config import *
 from src.logger import DataStore
 
 from URBasic import TCP6D
@@ -147,7 +148,7 @@ def _calibrate_tcp(flange_poses):
     c_tcp_base   = x[3:6]
     return t_tcp_flange, c_tcp_base
 
-def get_tcp_offset(tcps):
+def get_tcp_offset(tcps, verbose=VERBOSE):
     """
     Estimate the TCP offset from a set of measured poses and validate data quality.
 
@@ -170,33 +171,35 @@ def get_tcp_offset(tcps):
     # Convert poses to matrices
     Ts = [pose_to_T(p) for p in tcps]
 
-    # Extract R_i and p_i
-    Rs = [T[:3, :3] for T in Ts]
-    ps = [T[:3, 3] for T in Ts]
+    if verbose:
+        # Extract R_i and p_i
+        Rs = [T[:3, :3] for T in Ts]
+        ps = [T[:3, 3] for T in Ts]
 
-    # Old calibrated TCP for data validation purpose
-    t = np.array([1.30905845e-04, 3.33683034e-04, 2.45280738e-01])
+        # Old calibrated TCP for data validation purpose
+        t = np.array(TCP_REF_VAL)
 
-    # Compute estimated TCP position in base for each measurement
-    c_est = [ps[i] + Rs[i] @ t for i in range(len(ps))]
+        # Compute estimated TCP position in base for each measurement
+        c_est = [ps[i] + Rs[i] @ t for i in range(len(ps))]
 
-    # Compute spread (should be small)
-    c_est = np.array(c_est)
-    spread = np.max(np.linalg.norm(c_est - np.mean(c_est, axis=0), axis=1))
+        # Compute spread
+        c_est = np.array(c_est)
+        spread = np.max(np.linalg.norm(c_est - np.mean(c_est, axis=0), axis=1))
 
-    # Compute flange motion (should be large)
-    flange_motion = np.max(np.linalg.norm(ps - ps[0], axis=1))
+        # Compute flange motion
+        flange_motion = np.max(np.linalg.norm(ps - ps[0], axis=1))
 
-    # Compute rotation variation (should be large)
-    rot_angles = []
-    for R in Rs:
-        angle = np.arccos((np.trace(R) - 1) / 2)
-        rot_angles.append(angle)
-    rot_variation = np.max(rot_angles) - np.min(rot_angles)
+        # Compute rotation variation
+        rot_angles = []
+        for R in Rs:
+            angle = np.arccos((np.trace(R) - 1) / 2)
+            rot_angles.append(angle)
+        rot_variation = np.max(rot_angles) - np.min(rot_angles)
 
-    print("TCP consistency (mm):    \t", spread * 1000)
-    print("Flange motion (cm):      \t", flange_motion * 100)
-    print("Rotation variation (deg):\t", np.degrees(rot_variation))
+        # These value are only indicatif
+        print("TCP consistency (mm):    \t", spread * 1000)             #(wanted to be small)
+        print("Flange motion (cm):      \t", flange_motion * 100)       #(wanted to be large)
+        print("Rotation variation (deg):\t", np.degrees(rot_variation)) #(wanted to be large)
 
     t_tcp_flange, c_tcp_base = _calibrate_tcp(Ts)
     print("TCP in flange frame:", t_tcp_flange, " <-")  # Tool offset

@@ -4,6 +4,8 @@ MIT License
 Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 '''
 
+VERBOSE = True
+
 # Collision margins
 COLLISION_MARGIN = 0            # margin for obstacle collision checks
 SELF_COLLISION_MARGIN = 0.01   # margin for self-collision checks (5mm safety buffer)
@@ -48,6 +50,7 @@ TRAVEL_V = 0.25
 TRAVEL_A = 1.2
 HOVER_OFFSET = [0, 0, -0.01, 0, 0, 0]
 
+TCP_REF_VAL = [1.30905845e-04, 3.33683034e-04, 2.45280738e-01]
 # Calibration points, used as default
 TCPS_20 = [
     [0.09923226380963619, -0.3936237333456494, 0.2241707102377116, 0.576534502783353, -2.801623474567781, -0.4841337776020336],
