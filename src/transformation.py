@@ -222,7 +222,7 @@ def launch_transformation(robot_ip, file_path, ds: DataStore) -> AtoB:
         return obj2robot
 
     except Exception as e:
-        ds.log(f"Transforamtion skipped: {e}")
+        ds.log(f"Transforamtion skiped: {e}")
         raise
 
 def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
