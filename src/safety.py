@@ -3,13 +3,13 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 from pyb_utils import CollisionDetector
-from scipy.spatial.transform import Rotation, Slerp
+from scipy.spatial.transform import Rotation
 from pathlib import Path
 from URBasic import TCP6D
 
 from src.config import (
     JOINT_LIMITS, TCP_Y_MAX, TCP_Z_MIN, TCP_Z_MAX,
-    UR3E_MAX_REACH, FREE_TRAVEL_STEP, LINK_Z_MIN,
+    UR3E_MAX_REACH, LINK_Z_MIN,
     DRAWING_ANGLE, COLLISION_MARGIN, SELF_COLLISION_MARGIN
 )
 from src.kinematics import get_all_ik_solutions
@@ -93,19 +93,25 @@ class CollisionChecker:
             self.obstacle_exclude_links[oid] = set(obs.get('exclude_links', []))
 
         # Obstacle collision detector
-        obs_pairs = [
-            ((self.robot_id, link), (oid, -1))
-            for oid in self.obstacle_ids
-            for link in self.link_indices
-            if link not in self.obstacle_exclude_links.get(oid, set())
-        ]
-        self.obstacle_detector = CollisionDetector(self.cid, obs_pairs) if obs_pairs else None
+        obs_pairs = []
+        for oid in self.obstacle_ids:
+            excluded = self.obstacle_exclude_links.get(oid, set())
+            for link in self.link_indices:
+                if link not in excluded:
+                    obs_pairs.append(((self.robot_id, link), (oid, -1)))
+
+        if obs_pairs:
+            self.obstacle_detector = CollisionDetector(self.cid, obs_pairs)
+        else:
+            self.obstacle_detector = None
 
     # -------------------------------------------------------------------------
 
+    # moves instantly the robot to target joint angles position
     def set_joint_angles(self, q):
         for idx, angle in zip(self.joint_indices, q):
             p.resetJointState(self.robot_id, idx, float(angle), physicsClientId=self.cid)
+
 
     def in_self_collision(self, margin=SELF_COLLISION_MARGIN):
         return self.self_detector.in_collision(margin=margin)
@@ -127,6 +133,7 @@ class CollisionChecker:
             return False, f"TCP reach > {UR3E_MAX_REACH}"
         return True, ""
 
+    # not being used at the mment
     def check_joint_limits(self, q):
         q_list = q.toList() if hasattr(q, 'toList') else list(q)
         for i, (angle, limit) in enumerate(zip(q_list, JOINT_LIMITS)):
@@ -139,6 +146,8 @@ class CollisionChecker:
 
     # -------------------------------------------------------------------------
 
+    # Entry point of the pathfinding pipeline , checks safety, IK and cone orientation if needed
+    # returns a new tcp valid if one has been found
     def validate_tcp(self, robot, tcp, qnear=None, margin=COLLISION_MARGIN,
                      check_obstacle=True, orientation_search=False,
                      max_cone_angle=math.radians(DRAWING_ANGLE), cone_step=math.radians(5)):
@@ -158,6 +167,8 @@ class CollisionChecker:
 
         return False, None, reason, tcp
 
+
+    # Reurns all IK solution, sort them by qnear, then returns the first safe waypoint
     def _try_ik_and_collision(self, robot, tcp, qnear, margin, check_obstacle):
         candidates = get_all_ik_solutions(tcp, robot._tcp_offset, robot._model_correction)
         if not candidates:
@@ -166,13 +177,18 @@ class CollisionChecker:
         # Sort by joint-space distance to qnear so we prefer the closest config
         if qnear is not None:
             qnear_arr = np.array(qnear.toList())
-            candidates.sort(key=lambda c: np.sum((np.array(c.toList()) - qnear_arr) ** 2))
+            distances = []
+            for c in candidates:
+                diff = np.array(c.toList()) - qnear_arr
+                distances.append(np.sum(diff ** 2))
+            candidates = [c for _, c in sorted(zip(distances, candidates))]
 
         first_reason = None
         for q in candidates:
             ok, reason = self.check_joint_limits(q)
             if not ok:
-                first_reason = first_reason or reason
+                if first_reason is None:
+                    first_reason = reason
                 continue
 
             self.set_joint_angles(q.toList())
@@ -183,24 +199,28 @@ class CollisionChecker:
                 link_z = p.getLinkState(self.robot_id, link_idx, physicsClientId=self.cid)[0][2]
                 if link_z < z_min:
                     info = p.getJointInfo(self.robot_id, link_idx, physicsClientId=self.cid)
-                    first_reason = first_reason or f"Link {info[12].decode()} Z={link_z:.4f} < {z_min}"
+                    if first_reason is None:
+                        first_reason = f"Link {info[12].decode()} Z={link_z:.4f} < {z_min}"
                     link_ok = False
                     break
             if not link_ok:
                 continue
 
             if self.in_self_collision():
-                first_reason = first_reason or "Self-collision"
+                if first_reason is None:
+                    first_reason = "Self-collision"
                 continue
 
             if check_obstacle and self.in_obstacle_collision(margin):
-                first_reason = first_reason or "Obstacle collision"
+                if first_reason is None:
+                    first_reason = "Obstacle collision"
                 continue
 
             return True, q, ""
 
         return False, None, first_reason or "IK has no solution"
 
+    # Changes slightly the angle on which to search for analytical IK within a cone of angle [max_cone_angle]
     def _cone_search(self, robot, tcp, qnear, margin, check_obstacle, max_cone_angle, cone_step):
         tcp_xyz = np.array([tcp.x, tcp.y, tcp.z])
         original_rot = Rotation.from_rotvec([tcp.rx, tcp.ry, tcp.rz])
@@ -223,52 +243,24 @@ class CollisionChecker:
 
     # -------------------------------------------------------------------------
 
-    def validate_path(self, robot, waypoints_tcp, step=None, margin=COLLISION_MARGIN,
+
+    def validate_path(self, robot, waypoints_tcp, margin=COLLISION_MARGIN,
                       qnear=None, check_obstacle=True, orientation_search=False):
-        if step is None:
-            step = FREE_TRAVEL_STEP
-
         joint_trajectory = []
-        sample_idx = 0
 
-        for i in range(len(waypoints_tcp) - 1):
-            a, b = waypoints_tcp[i], waypoints_tcp[i + 1]
-            a_pos = np.array([a.x, a.y, a.z])
-            b_pos = np.array([b.x, b.y, b.z])
-
-            n_samples = max(int(np.ceil(np.linalg.norm(b_pos - a_pos) / step)), 1)
-            slerp = Slerp([0, 1], Rotation.from_rotvec([
-                [a.rx, a.ry, a.rz],
-                [b.rx, b.ry, b.rz],
-            ]))
-
-            for j in range(n_samples + 1):
-                t = j / n_samples
-                pos = a_pos + t * (b_pos - a_pos)
-                rv = slerp(t).as_rotvec()
-                tcp = TCP6D.createFromMetersRadians(
-                    float(pos[0]), float(pos[1]), float(pos[2]),
-                    float(rv[0]), float(rv[1]), float(rv[2]),
-                )
-                ok, q, reason, _ = self.validate_tcp(
-                    robot, tcp, qnear=qnear, margin=margin,
-                    check_obstacle=check_obstacle,
-                    orientation_search=orientation_search,
-                )
-                if not ok:
-                    return False, sample_idx, reason, joint_trajectory
-                joint_trajectory.append(q)
-                qnear = q
-                sample_idx += 1
+        for i, tcp in enumerate(waypoints_tcp):
+            ok, q, reason, _ = self.validate_tcp(
+                robot, tcp, qnear=qnear, margin=margin,
+                check_obstacle=check_obstacle,
+                orientation_search=orientation_search,
+            )
+            if not ok:
+                return False, i, reason, joint_trajectory
+            joint_trajectory.append(q)
+            qnear = q
 
         return True, -1, "", joint_trajectory
 
-    def __del__(self):
-        try:
-            if p.isConnected(self.cid):
-                p.disconnect(self.cid)
-        except Exception:
-            pass
 
 
 def setup_checker(obstacle_stls, gui=True):
