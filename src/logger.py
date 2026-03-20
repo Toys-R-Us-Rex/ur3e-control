@@ -222,7 +222,7 @@ class DataStore:
         if file_path:
             if not os.path.exists(file_path):
                 self.log(f"Transformation data file not found {file_path}")
-                return None, None
+                return None
 
             with open(file_path, "rb") as f:
                 data = pickle.load(f)
@@ -256,7 +256,7 @@ class DataStore:
         if file_path:
             if not os.path.exists(file_path):
                 self.log(f"Waypoints data file not found {file_path}")
-                return None, None
+                return None
 
             with open(file_path, "rb") as f:
                 data = pickle.load(f)
@@ -289,7 +289,7 @@ class DataStore:
         if file_path:
             if not os.path.exists(file_path):
                 self.log(f"TCP segments data file not found {file_path}")
-                return None, None
+                return None
 
             with open(file_path, "rb") as f:
                 data = pickle.load(f)
@@ -322,7 +322,7 @@ class DataStore:
         if file_path:
             if not os.path.exists(file_path):
                 self.log(f"Joint segments data file not found {file_path}")
-                return None, None
+                return None
 
             with open(file_path, "rb") as f:
                 data = pickle.load(f)
@@ -356,7 +356,7 @@ class DataStore:
         if file_path:
             if not os.path.exists(file_path):
                 self.log(f"Trace segments data file not found {file_path}")
-                return None, None
+                return None
 
             with open(file_path, "rb") as f:
                 data = pickle.load(f)
@@ -389,7 +389,7 @@ class DataStore:
         if file_path:
             if not os.path.exists(file_path):
                 self.log(f"Run segments data file not found {file_path}")
-                return None, None
+                return None
 
             with open(file_path, "rb") as f:
                 data = pickle.load(f)
