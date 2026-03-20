@@ -7,6 +7,7 @@ from URBasic.waypoint6d import TCP6D, Joint6D
 from duckify_simulation.duckify_sim import DuckifySim
 from duckify_simulation.duckify_sim.robot_control import SimRobotControl
 from src.segment import Segment
+from src.stage import Stage
 
 def test_waypoints(waypoints: list[Segment], ds: DataStore):
     try:
@@ -30,9 +31,9 @@ def test_waypoints(waypoints: list[Segment], ds: DataStore):
         ds.log(f"Gazebo test skipped: {e}")
         raise
     
-class Gazebo:
+class Gazebo(Stage):
     def __init__(self, datastore: DataStore):
-        self.ds = datastore
+        super().__init__(name="Gazebo", datastore=datastore)
 
     def run(self):
         waypoints = self.ds.load_joint_segments()

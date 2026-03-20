@@ -10,6 +10,8 @@ from src.config import *
 
 import matplotlib.pyplot as plt
 
+from src.stage import Stage
+
 def move_simple(robot: SimRobotControl | UrScript, motion, ds: DataStore = None):
     robot.movej(HOMEJ)
 
@@ -51,9 +53,9 @@ def move_simple(robot: SimRobotControl | UrScript, motion, ds: DataStore = None)
     plt.show()
 
 
-class Robot:
+class Robot(Stage):
     def __init__(self, datastore: DataStore, robot_ip: str):
-        self.ds = datastore
+        super().__init__(name="Robot", datastore=datastore)
         self.robot_ip = robot_ip
     
     def run(self):

@@ -1,15 +1,16 @@
 from URBasic.waypoint6d import TCP6D, Joint6D
 from src.logger import DataStore
 
+from src.stage import Stage
 from src.utils import ask_yes_no
 from src.segment import TraceSegment, TCPSegment, MotionType
 from src.config import DRAW_A, DRAW_V
 
 
-class Conversion:
+class Conversion(Stage):
     def __init__(self, datastore: DataStore):
-        self.ds = datastore
-    
+        super().__init__(name="Conversion", datastore=datastore)
+
     def run(self):
         if ask_yes_no("Do you have a conversion already saved? y/n\n"):
             segments = self.ds.load_tcp_segments()

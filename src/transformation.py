@@ -54,6 +54,7 @@ import numpy as np
 
 from URBasic.waypoint6d import TCP6D
 from src.config import *
+from src.stage import Stage
 from src.utils import *
 from src.logger import DataStore
 
@@ -253,9 +254,9 @@ def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
     robot.movej(HOMEJ)
 
 
-class Transformation:
+class Transformation(Stage):
     def __init__(self, datastore: DataStore, robot_ip: str, json_calibration: str):
-        self.ds = datastore
+        super().__init__(name="Transformation", datastore=datastore)
         self.robot_ip = robot_ip
         self.json_calibration = json_calibration
 

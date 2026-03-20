@@ -12,9 +12,9 @@ from src.pybullet_helpers import clear_bodies, find_hovers, preview_traces, spli
 from src.computation import assemble_segments, smoothing
 from src.segment import SideType
 
-class Pathfinding:
+class Pathfinding(Stage):
     def __init__(self, datastore: DataStore, obstacles=OBSTACLE_STLS, side=SideType.LEFT, verbose=True):
-        self.ds = datastore
+        super().__init__(name="Pathfinding", datastore=datastore)
         self.obstacles = obstacles
         self.side = side
         self.verbose = verbose

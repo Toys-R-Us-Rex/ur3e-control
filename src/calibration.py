@@ -45,6 +45,7 @@ Course:     HES-SO Valais-Wallis, Engineering Track 304
 
 import numpy as np
 
+from src.stage import Stage
 from src.utils import *
 from src.config import *
 from src.logger import DataStore
@@ -290,9 +291,9 @@ def launch_calibration(robot_ip, ds: DataStore):
         return False
 
 
-class Calibration:
+class Calibration(Stage):
     def __init__(self, datastore: DataStore, robot_ip: str):
-        self.ds = datastore
+        super().__init__(name="Calibration", datastore=datastore)
         self.robot_ip = robot_ip
 
     def load_and_log(self, path: str | None = None):

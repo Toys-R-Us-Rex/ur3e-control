@@ -1,11 +1,12 @@
 from src.logger import DataStore
 from src.segment import TraceSegment, SideType
 from src.computation import load_traces
+from src.stage import Stage
 from src.utils import ask_yes_no
 
-class Filter:
+class Filter(Stage):
     def __init__(self, dataStore: DataStore, json_path):
-        self.ds = dataStore
+        super().__init__(name="Filter", datastore=dataStore)
         self.json_path = json_path
 
     def run(self):
