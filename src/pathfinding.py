@@ -14,6 +14,7 @@ from src.config import PUSH_STEP, MAX_DEPTH, MAX_PUSH
 log = logging.getLogger(__name__)
 
 
+# Using D&C to rcursiverly split in the middle
 def find_path(robot, checker, A_tcp, B_tcp, depth=0, qnear=None):
 
     if qnear is None:
@@ -57,13 +58,14 @@ def lift_midpoint(robot, checker, A_tcp, B_tcp, qnear=None):
     b_pos = np.array([B_tcp.x, B_tcp.y, B_tcp.z])
     mid_pos = (a_pos + b_pos) / 2.0
 
-    # SLERP the orientations at t=0.5
+    # SPherical interpolation to find intermediate points on a rotation
     a_rotvec = np.array([A_tcp.rx, A_tcp.ry, A_tcp.rz])
     b_rotvec = np.array([B_tcp.rx, B_tcp.ry, B_tcp.rz])
     rots = Rot.from_rotvec([a_rotvec, b_rotvec])
     slerp = Slerp([0, 1], rots)
     mid_rotvec = slerp(0.5).as_rotvec()
 
+    # pushing upward if there was collision
     total_push = 0.0
     last_reason = ""
     while total_push < MAX_PUSH:

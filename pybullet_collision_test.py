@@ -75,28 +75,6 @@ pb.resetDebugVisualizerCamera(
 checker.set_joint_angles(home.toList())
 print(f"\nSet PyBullet robot to home: {home.toList()}")
 
-
-# input("Debug1 - round trip")
-#
-# print("Model correction:\n", robot._model_correction)
-# print("TCP offset:\n", robot._tcp_offset)
-#
-#
-# from src.kinematics import forward_kinematics_matrix, matrix_to_tcp6d
-# from src.kinematics import get_inverse_kin
-#
-# fk = forward_kinematics_matrix(home.toList()) @ robot._tcp_offset
-# tcp = matrix_to_tcp6d(fk)
-#
-# q = get_inverse_kin(tcp, home, robot._tcp_offset, robot._model_correction)
-#
-# print("Q is : ", q)
-#
-# if q is not None:
-#   checker.set_joint_angles(q.toList())
-#
-# input("Debug2")
-
 if not JUMP_TO_VIS:
     # Stage 1+2: load traces and convert to TCP
     surface_tcps_per_trace, traces, data = load_and_convert_to_tcp(file_path, obj2robot, max_pts=1000)

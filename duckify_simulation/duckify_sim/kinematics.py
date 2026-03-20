@@ -4,8 +4,6 @@ Pure-Python analytical kinematics — no robot connection or simulator needed.
 
 MIT License
 
-Copyright (c) 2026 Pierre-Yves Savioz
-
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -31,6 +29,9 @@ URBasic:    Uses data types from URBasic by Martin Huus Bjerge,
             modified by A. Amand, M. Richard, L. Azzalini (HES-SO)
 DH params:  Universal Robots UR3e technical specifications
 IK method:  Hawkins, K.P. "Analytic Inverse Kinematics for the Universal Robots"
+            The analytical IK follows Hawkins (2013). The solving structure was referenced
+            from existing open-source implementations (mc-capolei/python-Universal-robot-kinematics),
+            adapted for the UR3e DH parameters with added singularity handling and FK validation.
 """
 
 import math
@@ -134,58 +135,6 @@ def forward_kinematics(joint_angles):
         TCP6D with [x, y, z, rx, ry, rz] (position in meters, rotation as axis-angle).
     """
     return matrix_to_tcp6d(forward_kinematics_matrix(joint_angles))
-
-# def forward_kinematics(joint_angles):
-#     """Compute the TCP pose from joint angles using UR3e DH parameters.
-
-#     Args:
-#         joint_angles: list of 6 joint angles in radians.
-
-#     Returns:
-#         TCP6D with [x, y, z, rx, ry, rz] (position in meters, rotation as axis-angle).
-#     """
-#     T = np.eye(4)
-
-#     for i in range(6):
-#         theta = joint_angles[i]
-#         a = UR3E_DH[i]["a"]
-#         d = UR3E_DH[i]["d"]
-#         alpha = UR3E_DH[i]["alpha"]
-
-#         ct = math.cos(theta)
-#         st = math.sin(theta)
-#         ca = math.cos(alpha)
-#         sa = math.sin(alpha)
-
-#         Ti = np.array([
-#             [ct, -st * ca,  st * sa, a * ct],
-#             [st,  ct * ca, -ct * sa, a * st],
-#             [0,   sa,       ca,      d],
-#             [0,   0,        0,       1],
-#         ])
-
-#         T = T @ Ti
-
-#     # Extract position
-#     x, y, z = T[0, 3], T[1, 3], T[2, 3]
-
-#     # Extract rotation matrix and convert to axis-angle
-#     R = T[:3, :3]
-#     angle = math.acos(max(-1, min(1, (np.trace(R) - 1) / 2)))
-
-#     if abs(angle) < 1e-6:
-#         rx, ry, rz = 0.0, 0.0, 0.0
-#     elif abs(angle - math.pi) < 1e-6:
-#         rx = math.pi * math.sqrt(max(0.0, (R[0, 0] + 1) / 2))
-#         ry = math.pi * math.sqrt(max(0.0, (R[1, 1] + 1) / 2))
-#         rz = math.pi * math.sqrt(max(0.0, (R[2, 2] + 1) / 2))
-#     else:
-#         k = angle / (2 * math.sin(angle))
-#         rx = k * (R[2, 1] - R[1, 2])
-#         ry = k * (R[0, 2] - R[2, 0])
-#         rz = k * (R[1, 0] - R[0, 1])
-
-#     return TCP6D.createFromMetersRadians(x, y, z, rx, ry, rz)
 
 
 def pose_to_matrix(pose):

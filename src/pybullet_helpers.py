@@ -1,3 +1,13 @@
+'''
+MIT License
+
+Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
+
+Author: All pybullet animations have been created with the help from ClaudeAI (Anthropic)
+'''
+
+
+
 import time
 import pybullet as pb
 
@@ -60,7 +70,7 @@ def preview_traces(checker, surface_tcps_per_trace):
     input("Press ENTER to continue to validation...")
     pb.removeAllUserDebugItems(physicsClientId=cid)
 
-
+# Point by point IK and collision validation for each trace gree/red
 def validate_and_visualize(checker, robot, surface_tcps_per_trace, home):
     cid = checker.cid
     valid_masks_per_trace = []
@@ -95,7 +105,7 @@ def validate_and_visualize(checker, robot, surface_tcps_per_trace, home):
 
     return valid_masks_per_trace, surface_joints_per_trace, sphere_ids
 
-
+# separate groups of points into runs ( each with a diff color )
 def split_and_visualize(checker, surface_tcps_per_trace, valid_masks_per_trace):
     cid = checker.cid
     runs_per_trace = []
@@ -128,7 +138,7 @@ def split_and_visualize(checker, surface_tcps_per_trace, valid_masks_per_trace):
 
     return runs_per_trace, sphere_ids
 
-
+# For each run search a non colliding hover point, if not , trim the run
 def find_hovers(checker, robot, surface_tcps_per_trace, runs_per_trace, surface_joints_per_trace):
     cid = checker.cid
     validated_runs = []

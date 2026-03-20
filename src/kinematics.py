@@ -31,6 +31,9 @@ URBasic:    Uses data types from URBasic by Martin Huus Bjerge,
             modified by A. Amand, M. Richard, L. Azzalini (HES-SO)
 DH params:  Universal Robots UR3e technical specifications
 IK method:  Hawkins, K.P. "Analytic Inverse Kinematics for the Universal Robots"
+            The analytical IK follows Hawkins (2013). The solving structure was referenced
+            from existing open-source implementations (mc-capolei/python-Universal-robot-kinematics),
+            adapted for the UR3e DH parameters with added singularity handling and FK validation.
 """
 
 import math
