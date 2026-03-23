@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import os
 import time
+
+from src.utils import ask_yes_no
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 #from duckify_simulation.duckify_sim import DuckifySim as ISCoin
@@ -12,168 +14,195 @@ from URBasic import ISCoin  # <-- swap this line to use the real robot
 from URBasic import Joint6D, TCP6D
 from URBasic.waypoint6d import TCP6DDescriptor
 from math import radians, pi
+from enum import Enum, auto
 
-# Connect
+from duckify_simulation.duckify_sim import DuckifySim as ISCoin # (x,y,z)
+# from URBasic import ISCoin  # <-- swap this line to use the real robot # (y,x,z)
 
+#[-0.31030073427776544, -0.12772318658605364, 0.1691221791937419, -3.123526746656135, 0.06494033931935389, 0.0007571664234476744]
 
-class Measurement :
-    '''
-    The minimal distance we must ensure before destructive reaction (unit in meter)
-    The wood plate = 0.005
-    The pen support = 0.046
-    The pen length outside of the pen support = 0.101
-    '''
-    minimal_distance = 0.155
-    length_between_pen = 0.05 # This distance comes from the design of the wood support for pen.
-    facing_down = (pi, 0, 0) # To maintain the gripper facing down
+from math import pi
+from URBasic import TCP6D
+from URBasic.waypoint6d import TCP6DDescriptor
 
-    gripper_length = 0.101
+MINIMAL_DISTANCE = 0.164
+LEGNTH_BETWEEN_PENS = 0.05 # This distance comes from the design of the wood support for pen.
+FACING_DOWN = (pi, 0, 0) # To maintain the gripper facing down
+SECURITY_APPROACH = 0.075
 
-m = Measurement()
+GRIPPER_LENGTH = 0.101
+PEN_LENGTH = 0.128
+# PEN_POS_0 =  [-0.3, -0.172, MINIMAL_DISTANCE] # Position of pen at index 0
 
-def get_current_tcp():
-    current_tcp = iscoin.robot_control.get_actual_tcp_pose()
-    print(f"current tcp: ({current_tcp.x}, {current_tcp.y}, {current_tcp.z}, {current_tcp.rx}, {current_tcp.ry}, {current_tcp.rz})")
-    return (current_tcp.x, current_tcp.y, current_tcp.z)
+class GripperAction(Enum):
+    CLOSE = auto()  # Close gripper
+    OPEN  = auto()  # Open gripper
 
-def home_position():
-    
-    tcp_x, tcp_y, tcp_z = get_current_tcp()
-
-    home_down = TCP6D.createFromMetersRadians(
-        tcp_x,
-        tcp_y,
-        tcp_z,
-        m.facing_down[0],
-        m.facing_down[1],
-        m.facing_down[2]
-    )
-
-    return home_down
-
-
-def get_pen_by_id(pen_id):
+class PenState():
     """
-    This function will upgrade the function "get pen" from Nathan Antonietti to be able to go to a pen base on an id we choose:
-    
-    The id = 0 will be the pen in the support with waypoint and every id > 0 will be at 50mm from the id 0 in Y axis
-    """
-    
-
-    to_top_of_pen = TCP6D.createFromMetersRadians(
-        PEN_POS_0[0],
-        PEN_POS_0[1] - m.length_between_pen*pen_id,
-        PEN_POS_0[2] + 0.05,
-        m.facing_down[0],
-        m.facing_down[1],
-        m.facing_down[2]
-    )
-
-    to_pen = TCP6D.createFromMetersRadians(
-        PEN_POS_0[0],
-        PEN_POS_0[1] - m.length_between_pen*pen_id,
-        PEN_POS_0[2],
-        m.facing_down[0],
-        m.facing_down[1],
-        m.facing_down[2]
-    )
-
-    return to_top_of_pen, to_pen
-
-
-def switch_pen(id2, id1 = None) :
-    
-
-    iscoin.gripper.activate()
-
-    time.sleep(2)
-    move_list = []
-
-    v = 0.2
+    PenState handles to HandE Gripper pen transitions and state.
+    ```
+    from src.pen import PenState
 
     home = home_position()
+    ps = PenState(home=home, robot=iscoin)
 
-    waypoints_home = [
-        TCP6DDescriptor(home, v=v),
-    ]
-    if id1 != None :
-        pen_1 = get_pen_by_id(id1)
-        waypoints_to_pen_1 = [
-            TCP6DDescriptor(pen_1[0], v=v, r=0.01),
-            TCP6DDescriptor(pen_1[1], v=v, r=0.01),
+    ps.run_moves(
+        ps.change_pen(target_pen_id=0)
+    )
+
+    ps.run_moves(
+        ps.change_pen(target_pen_id=1)
+    )
+    ```
+    """
+
+    def __init__(self, home: TCP6D, robot: ISCoin):
+        self.home = home
+        self.support_position: TCP6D = None
+
+        self.active_pen_id = None
+        self.robot = robot
+
+    def record_pen_position(self):
+        if ask_yes_no("In simulation? y/n \n"):
+            # TODO: CHANGE THIS - The support position should be saved in a file and reused
+            self.robot.gripper.open()
+            self.support_position = TCP6D.createFromMetersRadians(-0.31030073427776544, -0.12772318658605364, 0.1691221791937419, -3.123526746656135, 0.06494033931935389, 0.0007571664234476744)
+            return
+        
+        self.robot.robot_control.freedrive_mode()
+
+        self.robot.gripper.open()
+        if ask_yes_no("Pen in gripper ? y/n \n"):
+            self.robot.gripper.close()
+
+        while ask_yes_no("Confirm point? y/n \n"):
+            pass
+        self.support_position = self.robot.robot_control.get_actual_tcp_pose()
+            
+        print(f"Support position: {self.support_position}")
+
+        self.robot.gripper.open()
+
+        if ask_yes_no("Reset arm? y/n \n"):
+            self.robot.robot_control.end_freedrive_mode()
+
+    def get_pen_by_id(self, pen_id: int):
+        """
+        This function will upgrade the function "get pen" from Nathan Antonietti to be able to go to a pen base on an id we choose:
+        
+        The id = 0 will be the pen in the support with waypoint and every id > 0 will be at 50mm from the id 0 in Y axis
+        """
+
+        print(f"PEN 0 POS: {self.support_position}")
+
+        to_top_of_pen = TCP6D.createFromMetersRadians(
+            self.support_position[0],
+            self.support_position[1] - LEGNTH_BETWEEN_PENS * pen_id,
+            self.support_position[2] + SECURITY_APPROACH,
+            FACING_DOWN[0],
+            FACING_DOWN[1],
+            FACING_DOWN[2]
+        )
+
+        to_pen = TCP6D.createFromMetersRadians(
+            self.support_position[0],
+            self.support_position[1] - LEGNTH_BETWEEN_PENS * pen_id,
+            MINIMAL_DISTANCE,
+            FACING_DOWN[0],
+            FACING_DOWN[1],
+            FACING_DOWN[2]
+        )
+
+        side_of_pen = TCP6D.createFromMetersRadians(
+            self.support_position[0] + SECURITY_APPROACH,
+            self.support_position[1] - LEGNTH_BETWEEN_PENS * pen_id,
+            self.support_position[2] + SECURITY_APPROACH,
+            FACING_DOWN[0],
+            FACING_DOWN[1],
+            FACING_DOWN[2]
+        )
+
+        return to_top_of_pen, to_pen, side_of_pen
+
+    def return_pen(self):
+        move_list = []
+        v = 0.2
+    
+        if self.active_pen_id is None:
+            print("No pen to return")
+            return move_list
+
+        top_active_pen, to_active_pen, side_of_pen = self.get_pen_by_id(self.active_pen_id)
+        waypoints_to_active_pen = [
+            TCP6DDescriptor(side_of_pen, v=v),
+            TCP6DDescriptor(top_active_pen, v=v),
+            TCP6DDescriptor(to_active_pen, v=v)
         ]
-        waypoints_move_out_pen_1 = [
-            TCP6DDescriptor(pen_1[0], v=v, r=0.01),
+        waypoints_move_out_active_pen = [
+            TCP6DDescriptor(top_active_pen, v=v),
+            TCP6DDescriptor(side_of_pen, v=v)
+        ]
+ 
+        move_list.append(waypoints_to_active_pen)
+        move_list.append(GripperAction.OPEN)
+        move_list.append(waypoints_move_out_active_pen)
+
+        self.active_pen_id = None
+        return move_list
+
+    def change_pen(self, target_pen_id: int):
+        move_list = []
+        v = 0.2
+        
+        if target_pen_id == self.active_pen_id:
+            print(f"Pen {target_pen_id} already in use")
+            return move_list
+
+        # return pen to support if one is active
+        move_list = self.return_pen()
+
+        # Get target pen position
+        top_target_pen, to_target_pen, side_of_pen = self.get_pen_by_id(target_pen_id)
+
+        waypoints_to_target_pen = [
+            TCP6DDescriptor(side_of_pen, v=v),
+            TCP6DDescriptor(top_target_pen, v=v),
+            TCP6DDescriptor(to_target_pen, v=v)
+        ]
+        
+        waypoints_move_out_target_pen = [
+            TCP6DDescriptor(top_target_pen, v=v),
+            TCP6DDescriptor(side_of_pen, v=v)
         ]
 
-        move_list.append(waypoints_to_pen_1)
-        move_list.append(0)
-        move_list.append(waypoints_move_out_pen_1)
+        waypoints_home = [
+            TCP6DDescriptor(self.home, v=v),
+        ]
 
+        move_list.append(waypoints_to_target_pen)
+        move_list.append(GripperAction.CLOSE)
+        move_list.append(waypoints_move_out_target_pen)
+        move_list.append(waypoints_home)
 
-    pen_2 = get_pen_by_id(id2)
-
-    waypoints_to_pen_2 = [
-            TCP6DDescriptor(pen_2[0], v=v, r=0.01),
-            TCP6DDescriptor(pen_2[1], v=v, r=0.01),
-    ]
+        # set new active pen
+        self.active_pen_id = target_pen_id
+        return move_list
     
-    waypoints_move_out_pen_2 = [
-        TCP6DDescriptor(pen_2[0], v=v, r=0.01),
-    ]
-
-    waypoints_home = [
-        TCP6DDescriptor(home, v=v, r=0.01),
-    ]
-    move_list.append(0)
-    move_list.append(waypoints_to_pen_2)
-    move_list.append(1)
-    move_list.append(waypoints_move_out_pen_2)
-    move_list.append(waypoints_home)
-
-    print(move_list)
-    for m in move_list:
-        print(type(m))
-        if type(m)==int:
-            if m == 0:
-                print("open")
-                iscoin.gripper.open()
+    def run_moves(self, move_list: list[list[TCP6DDescriptor | GripperAction]]):
+        """
+        move_list: list[list[TCP6DDescriptor]]
+        Usage:
+            `run_moves( change_pen(0, 1) )`
+            `run_moves( return_pen(1) )`
+        """
+        for m in move_list:
+            if m is GripperAction.CLOSE:
+                self.robot.gripper.close()
                 time.sleep(1)
-            else :
-                print("close")
-                iscoin.gripper.close()
+            elif m is GripperAction.OPEN:
+                self.robot.gripper.open()
                 time.sleep(1)
-        else :
-
-            iscoin.robot_control.movel_waypoints(m, wait=True)
-
-    print("n")
-    iscoin.gripper.open()
-    time.sleep(1)
-    iscoin.gripper.deactivate()
-    print("Deactivated")
-    return True
-
-    '''
-    ok = iscoin.robot_control.movel_waypoints(waypoints_to_pen_1)
-    if not ok:
-        print("Pick approach failed")
-        return False
-    '''
-
-if __name__ == "__main__" :
-
-    iscoin = ISCoin(host="10.30.5.158") #(host="10.30.5.159")
-    PEN_POS_0 =  [-0.250, -0.176, m.minimal_distance] # pen tip position in world frame -(SUPPORT_OFFSET - PEN_IN_SUPPORT_OFFSET)
-    
-    '''
-    with open('calib.json', 'r', encoding='utf-8') as f:
-        f.read()
-        data = json.load(f)
-        PEN_POS_0 = [data["x"], data["y"], data["z"]]
-    '''
-
-    tool_tcp = TCP6D.createFromMetersRadians(0.0, 0.0, m.gripper_length, 0.0, 0.0, 0.0)
-    iscoin.robot_control.set_tcp(tool_tcp)
-    switch_pen(0)
-    
+            else:
+                self.robot.robot_control.movel_waypoints(m, wait=True)
