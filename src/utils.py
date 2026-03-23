@@ -1,32 +1,10 @@
-'''
+"""
 Utility functions for working with 3D rotations and poses.
-
-This module provides lightweight helpers for converting between several
-common rotation representations used in robotics and computer vision:
-
-- normal_to_rotvec(n):
-    Computes the rotation vector that aligns the +Z axis with a given
-    surface normal. Useful for orienting tools or end-effectors so they
-    face a surface.
-
-- rotvec_to_rotmat(r):
-    Converts a rotation vector (axis-angle representation) into a 3x3
-    rotation matrix using Rodrigues' formula.
-
-- rotmat_to_rotvec(R):
-    Converts a 3x3 rotation matrix into a rotation vector.
-
-- pose_to_T(pose):
-    Converts a 6-element pose [x, y, z, rx, ry, rz] (UR-style axis-angle)
-    into a 4x4 homogeneous transformation matrix.
-
-All functions assume right-handed coordinate frames and use NumPy for
-vector and matrix operations.
 
 Usage
 -----
-This module is designed to be used with the URBasic library, from which this
-project is derived:
+This module is designed to be used with our Duckify simulation environment,
+and the URBasic library from which it is derived:
     https://github.com/ISC-HEI/ur3e-control
 
 MIT License
@@ -51,12 +29,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author:     Mariéthoz Cédric, with assistance from Copilote AI (Microsoft)
+Author:     Mariéthoz Cédric, with assistance from Copilot AI (Microsoft)
+Co-Author:  Savioz Pierre-Yves, with assistance from Claude AI (Anthropic)
 Course:     HES-SO Valais-Wallis, Engineering Track 304
-'''
+"""
+
 import numpy as np
 
-def normal_to_rotvec(n):
+def normal_to_rotvec(n: np.ndarray|list):
     """
     Compute the rotation vector that aligns the +Z axis with a given normal.
 
@@ -173,10 +153,38 @@ def pose_to_T(pose):
 
 
 def fmt_tcp(tcp):
+    """
+    Format a TCP pose as a string.
+
+    Parameters
+    ----------
+    tcp : TCP6D
+        The TCP pose to format.
+
+    Returns
+    -------
+    str
+        The formatted string.
+    """
     return f"({tcp.x:.4f}, {tcp.y:.4f}, {tcp.z:.4f})"
 
 
 def tcp_trans(tcp1, tcp2):
+    """
+    Compose two TCP poses (position + rotation vector) and return the resulting pose.
+
+    Parameters
+    ----------
+    tcp1 : UrScript
+        First TCP pose to compose.
+    tcp2 : UrScript
+        Second TCP pose to compose.
+
+    Returns
+    -------
+    motion : list of TCP6D
+        Sequence of poses including the reference pose and rotated poses.
+    """
     # Décomposition
     p1 = np.array(tcp1[:3])
     r1 = np.array(tcp1[3:])
@@ -247,9 +255,25 @@ def stl_to_obj(pts):
 
 
 def ask_yes_no(prompt: str) -> bool:
+    """
+    Ask the user a yes/no question.
+
+    Parameters
+    ----------
+    prompt : str
+        The question to ask.
+
+    Returns
+    -------
+    bool
+        True if the user answers "y", False otherwise.
+    """
     return input(prompt).strip().lower() == "y"
     
 class AtoB:
+    """
+    A similarity transform that maps points from one coordinate system to another.
+    """
     def __init__(self, T_position, T_orientation):
         self.T_position = T_position
         self.T_orientation = T_orientation

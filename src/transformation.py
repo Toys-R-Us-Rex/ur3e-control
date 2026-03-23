@@ -1,26 +1,14 @@
-'''
-TCP transformation tool for UR-series robots.
+"""
+Coordinate Transformation Module
 
-This module provides utilities to:
-- collect TCP transformation data (`collect_data`)
-- compute the transformation function (`create_transformation`)
-- transform TCP points (`tcp_trans`)
-- convert between .obj and .stl coordinate systems (`obj_to_stl`, `stl_to_obj`)
+This module provides functionality for performing coordinate transformations
+between different frames of reference.
 
 Usage
 -----
-This module is designed to be used with the URBasic library, from which this
-project is derived:
+This module is designed to be used with our Duckify simulation environment,
+and the URBasic library from which it is derived:
     https://github.com/ISC-HEI/ur3e-control
-
-Typical workflow:
-    1. Collect transformation samples using `collect_data`.
-    2. Compute the transformation using `create_transformation`.
-    3. Convert coordinate systems using resulting function `AtoB`.
-
-Additional tool:
-    - `tcp_trans`: composes two TCP poses (position + rotation vector) and returns the resulting pose.
-    - `obj_to_stl`, `stl_to_obj`: convert between .obj and .stl coordinate systems.
 
 MIT License
 
@@ -44,24 +32,40 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author:     Mariéthoz Cédric, with assistance from Copilote AI (Microsoft)
-Author:     Savioz Pierre-Yves, with assistance from Claude AI (Anthropic)
+Author:     Mariéthoz Cédric, with assistance from Copilot AI (Microsoft)
+Co-Author:  Savioz Pierre-Yves, with assistance from Claude AI (Anthropic)
 Course:     HES-SO Valais-Wallis, Engineering Track 304
-'''
+"""
 
 import json
 import numpy as np
+from scipy.spatial.transform import Rotation as Rot
 
-from URBasic.waypoint6d import TCP6D
 from src.config import *
 from src.stage import Stage
 from src.utils import *
 from src.logger import DataStore
 
-from URBasic.iscoin import ISCoin
-from duckify_simulation.duckify_sim import DuckifySim
-      
-def collect_data(robot_arm, world_measure):
+from URBasic import ISCoin, UrScript, TCP6D
+from duckify_simulation import DuckifySim
+from duckify_simulation.duckify_sim.robot_control import SimRobotControl
+
+def collect_data(robot_arm: UrScript | SimRobotControl, world_measure: list[list[float]]) -> list[list[float]]:
+    """
+    Collect TCP transformation data for the specified world measurement points.
+
+    Parameters
+    ----------
+    robot_arm : UrScript
+        Interface to the robot controller.
+    world_measure : list of list[float]
+        List of world coordinate points for measurement.
+
+    Returns
+    -------
+    tcps : list of list[float]
+        Collected TCP poses in UR format [x, y, z, rx, ry, rz].
+    """
     if len(world_measure) < 3:
         print("Minimum 3 measure points.")
         raise ValueError("You don't provide enough world measure")
@@ -99,11 +103,23 @@ def collect_data(robot_arm, world_measure):
 
     return np.array(tcps)
 
-def create_transformation(A, B):
+def create_transformation(A: np.ndarray, B: np.ndarray) -> AtoB:
     """
     Computes the similarity transform (scale + rotation + translation)
     that maps A to B using a scaled Kabsch algorithm.
     A and B are Nx3 arrays of corresponding points.
+
+    Parameters
+    ----------
+    A : np.ndarray
+        Source points (Nx3 array).
+    B : np.ndarray
+        Target points (Nx3 array).
+
+    Returns
+    -------
+    AtoB
+        The similarity transform mapping A to B.
     """
 
     A = np.asarray(A)[:, :3]
@@ -154,9 +170,24 @@ def create_transformation(A, B):
 
 
 # creates a 4D homogenous matrice based on translation vector and angles given manually
-def build_manual_transform(rz_deg=OBJ2ROBOT_RZ_DEG, translation=OBJ2ROBOT_TRANSLATION, scale=OBJ2ROBOT_SCALE):
-    from scipy.spatial.transform import Rotation as Rot
+def build_manual_transform(rz_deg: float = OBJ2ROBOT_RZ_DEG, translation: tuple = OBJ2ROBOT_TRANSLATION, scale: float = OBJ2ROBOT_SCALE) -> AtoB:
+    """
+    Builds a manual transformation matrix based on translation vector and angles.
 
+    Parameters
+    ----------
+    rz_deg : float
+        Rotation angle around the z-axis in degrees.
+    translation : tuple
+        Translation vector (x, y, z).
+    scale : float
+        Uniform scale factor.
+
+    Returns
+    -------
+    AtoB
+        The manual transformation matrix.
+    """
     rz_rad = np.radians(rz_deg)
     R = Rot.from_euler('z', rz_rad).as_matrix() * scale  # rotation + scale
 
@@ -173,7 +204,20 @@ def build_manual_transform(rz_deg=OBJ2ROBOT_RZ_DEG, translation=OBJ2ROBOT_TRANSL
     return AtoB(T, T_normal)
 
 # gets the position, quaternion , scale from obj2robot so that pybullet can place the STL mesh in the space
-def extract_pybullet_pose(obj2robot):
+def extract_pybullet_pose(obj2robot: AtoB) -> tuple[list[float], list[float], float]:
+    """
+    Extracts the position, quaternion, and scale from a similarity transform for use in PyBullet.
+
+    Parameters
+    ----------
+    obj2robot : AtoB
+        The similarity transform mapping points from object coordinates to robot coordinates.
+
+    Returns
+    -------
+    tuple[list[float], list[float], float]
+        A tuple containing the position (x, y, z), quaternion (x, y, z, w), and scale.
+    """
     from scipy.spatial.transform import Rotation as Rot
     T = obj2robot.T_position
     pos = T[:3, 3].tolist()
@@ -188,7 +232,22 @@ def extract_pybullet_pose(obj2robot):
     return pos, quat, scale
 
 # gets the transform data from the pickle files.
-def load_obj2robot(record, rz_deg=OBJ2ROBOT_RZ_DEG):
+def load_obj2robot(record: DataStore, rz_deg: float = OBJ2ROBOT_RZ_DEG):
+    """
+    Loads the transformation data from a pickle file.
+
+    Parameters
+    ----------
+    record : DataStore
+        The data store containing the transformation data.
+    rz_deg : float
+        Rotation angle around the z-axis in degrees.
+
+    Returns
+    -------
+    AtoB
+        The loaded transformation matrix.
+    """
     a = record.load_transformation("save_data_test/20260317/transformation_0.pkl")
     T_loaded = a.T_position
     if T_loaded is not None:
@@ -201,7 +260,24 @@ def load_obj2robot(record, rz_deg=OBJ2ROBOT_RZ_DEG):
     return build_manual_transform(rz_deg=rz_deg, translation=translation)
 
 
-def launch_transformation(robot_ip, file_path, ds: DataStore) -> AtoB:
+def launch_transformation(robot_ip: str, file_path: str, ds: DataStore) -> AtoB:
+    """
+    Launches the transformation process.
+
+    Parameters
+    ----------
+    robot_ip : str
+        The IP address of the robot.
+    file_path : str
+        The path to the JSON file containing calibration data.
+    ds : DataStore
+        The data store for managing transformation data.
+
+    Returns
+    -------
+    AtoB
+        The resulting transformation matrix.
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -226,12 +302,25 @@ def launch_transformation(robot_ip, file_path, ds: DataStore) -> AtoB:
         ds.log(f"Transforamtion skiped: {e}")
         raise
 
-def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
-    test = np.array([0,0,2,0,0,-1]) # x,y,z, n1,n2,n3
+def test_transformation(ds: DataStore, obj2robot: AtoB, robot_ip: str, test: list = TEST_TRANSFORMATION):
+    """
+    Tests the transformation by converting a test point and logging the result.
+
+    Parameters
+    ----------
+    ds : DataStore
+        The data store for managing transformation data.
+    obj2robot : AtoB
+        The transformation matrix.
+    robot_ip : str
+        The IP address of the robot.
+    test : list, optional
+        The test point to convert, by default TEST_TRANSFORMATION
+    """
     tcp = TCP6D.createFromMetersRadians( *obj2robot(test))
     ds.log(f"Conversion test; {test} give {tcp}")
     print(f"Conversion test; {test} give {tcp}")
-    if not ask_yes_no("Do you want to test on the Gazebo? y/n \n"):
+    if not ask_yes_no("Do you want to test on Gazebo? y/n \n"):
         return
     
     duckify_sim = DuckifySim()
@@ -242,7 +331,7 @@ def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
     robot_sim.movel(tcp)
     robot.movej(HOMEJ)
     
-    if not ask_yes_no("Do you want to test on the robot? y/n \n"):
+    if not ask_yes_no("Do you want to test on robot? y/n \n"):
         return
 
     iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
@@ -255,23 +344,41 @@ def test_transforamtion(ds: DataStore, obj2robot: AtoB, robot_ip):
 
 
 class Transformation(Stage):
+    """
+    A stage for performing coordinate transformations between object and robot frames.
+    """
     def __init__(self, datastore: DataStore, robot_ip: str, json_calibration: str):
+        """
+        Initialize the Transformation stage.
+
+        Parameters
+        ----------
+        datastore : DataStore
+            The data store instance.
+        robot_ip : str
+            The IP address of the robot.
+        json_calibration : str
+            The path to the JSON file containing calibration data.
+        """
         super().__init__(name="Transformation", datastore=datastore)
         self.robot_ip = robot_ip
         self.json_calibration = json_calibration
 
     def run(self):
+        """
+        Run the transformation stage.
+        """
         while True:
             if ask_yes_no("Do you have the transformation already saved? y/n \n"):
                 obj2robot = self.ds.load_transformation()
                 if ask_yes_no("Do you want to test transformation? y/n \n"):
-                    test_transforamtion(self.ds, obj2robot, self.robot_ip)
+                    test_transformation(self.ds, obj2robot, self.robot_ip)
                 return
 
             if ask_yes_no("Do you want to run a robot transformation? y/n \n"):
                 obj2robot = launch_transformation(self.robot_ip, self.json_calibration, self.ds)
                 if ask_yes_no("Do you want to test transformation? y/n \n"):
-                    test_transforamtion(self.ds, obj2robot, self.robot_ip)
+                    test_transformation(self.ds, obj2robot, self.robot_ip)
                 return
 
             if ask_yes_no("You don't have a transformation or can't run one? y/n \n"):
@@ -281,6 +388,9 @@ class Transformation(Stage):
             print("Invalid input, please try again.")
 
     def fallback(self):
+        """
+        Fallback method for the transformation stage.
+        """
         self.ds.log("Fall back transformation.")
 
         if ask_yes_no("Use default transformation (test only)? y/n \n"):

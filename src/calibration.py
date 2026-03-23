@@ -1,21 +1,15 @@
-'''
-TCP calibration and validation tools for UR-series robots.
+"""
+TCP calibration and validation Module.
 
-This module provides utilities to:
-- collect TCP calibration data (`collect_data`)
-- compute the TCP offset from recorded samples (`get_tcp_offset`)
-- validate the resulting calibration through robot motion (`validate_calibration`)
+This module provides utilities for calibrating and validatingthe TCP (Tool
+Center Point) of UR-series robots.
 
 Usage
 -----
-This module is designed to be used with the URBasic library, from which this
-project is derived:
+This module is designed to be used with our Duckify simulation environment,
+and the URBasic library from which it is derived:
     https://github.com/ISC-HEI/ur3e-control
 
-Typical workflow:
-    1. Collect calibration samples using `collect_data`.
-    2. Compute the TCP offset using `get_tcp_offset`.
-    3. Validate the calibration using `validate_calibration`.
 
 MIT License
 
@@ -39,9 +33,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Author:     Mariéthoz Cédric, with assistance from Copilote AI (Microsoft)
+Author:     Mariéthoz Cédric, with assistance from Copilot AI (Microsoft)
 Course:     HES-SO Valais-Wallis, Engineering Track 304
-'''
+"""
 
 import numpy as np
 
@@ -55,7 +49,7 @@ from URBasic import UrScript
 from URBasic import ISCoin
 
 
-def collect_data(robot_arm: UrScript, num_measure:int = 20):
+def collect_data(robot_arm: UrScript, num_measure: int = 20) -> list[list[float]]:
     """
     Interactively collect multiple TCP poses while the robot is in freedrive mode.
 
@@ -111,7 +105,7 @@ def collect_data(robot_arm: UrScript, num_measure:int = 20):
 
     return tcps
 
-def _calibrate_tcp(flange_poses):
+def _calibrate_tcp(flange_poses: list[list[float]]) -> tuple[list[float], list[float]]:
     """
     Solve for the TCP position using a pivot calibration method.
 
@@ -149,7 +143,7 @@ def _calibrate_tcp(flange_poses):
     c_tcp_base   = x[3:6]
     return t_tcp_flange, c_tcp_base
 
-def get_tcp_offset(tcps, verbose=VERBOSE):
+def get_tcp_offset(tcps: list[list[float]], verbose=VERBOSE) -> TCP6D:
     """
     Estimate the TCP offset from a set of measured poses and validate data quality.
 
@@ -209,7 +203,7 @@ def get_tcp_offset(tcps, verbose=VERBOSE):
     tcp_offset = TCP6D.createFromMetersRadians(t_tcp_flange[0], t_tcp_flange[1], t_tcp_flange[2], 0 , 0, 0)
     return tcp_offset
 
-def _rotate_around_tcp(tcp: TCP6D, rx, ry, rz):
+def _rotate_around_tcp(tcp: TCP6D, rx: float, ry: float, rz: float) -> TCP6D:
     """
     Create a new TCP pose by applying additional rotations around the TCP.
 
@@ -233,7 +227,7 @@ def _rotate_around_tcp(tcp: TCP6D, rx, ry, rz):
     )
     return new_pose
 
-def validate_calibration(robot_arm: UrScript, rot=0.2):
+def validate_calibration(robot_arm: UrScript, rot: float = 0.2) -> list[TCP6D]:
     """
     Generate a sequence of poses to visually validate TCP calibration.
 
@@ -275,7 +269,22 @@ def validate_calibration(robot_arm: UrScript, rot=0.2):
     return motion
 
 
-def launch_calibration(robot_ip, ds: DataStore):
+def launch_calibration(robot_ip: str, ds: DataStore) -> bool:
+    """
+    Launch the calibration process for the robot at the specified IP address.
+
+    Parameters
+    ----------
+    robot_ip : str
+        The IP address of the robot to calibrate.
+    ds : DataStore
+        The data store for saving calibration results.
+
+    Returns
+    -------
+    bool
+        True if calibration is successful, False otherwise.
+    """
     try:
         iscoin = ISCoin(host=robot_ip, opened_gripper_size_mm=40)
 
@@ -292,17 +301,27 @@ def launch_calibration(robot_ip, ds: DataStore):
 
 
 class Calibration(Stage):
+    """
+    Stage for performing robot TCP calibration.
+    """
     def __init__(self, datastore: DataStore, robot_ip: str):
+        """
+        Initialize the Calibration stage.
+
+        Parameters
+        ----------
+        datastore : DataStore
+            The data store instance.
+        robot_ip : str
+            The IP address of the robot to calibrate.
+        """
         super().__init__(name="Calibration", datastore=datastore)
         self.robot_ip = robot_ip
 
-    def load_and_log(self, path: str | None = None):
-        tcps, tcp_offset = self.ds.load_calibration(path)
-        self.ds.save_calibration(tcps, tcp_offset)
-        self.ds.log_calibration(tcps, tcp_offset)
-        return tcps, tcp_offset
-
     def run(self):
+        """
+        Run the calibration stage.
+        """
         while True:
 
             if ask_yes_no("Do you have a calibration already saved? y/n\n"):
@@ -333,6 +352,9 @@ class Calibration(Stage):
             print("Invalid input. Please answer with 'y' or 'n'.")
 
     def fallback(self):
+        """
+        Fallback method for the calibration stage.
+        """
         self.ds.log("Fall back: load default calibration.")
         tcps, tcp_offset = self.ds.load_calibration("save_data/calibration_default.pkl")
         self.ds.save_calibration(tcps, tcp_offset)

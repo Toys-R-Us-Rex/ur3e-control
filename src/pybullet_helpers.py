@@ -3,7 +3,7 @@ MIT License
 
 Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 
-Author: All pybullet animations have been created with the help from ClaudeAI (Anthropic)
+Author: All pybullet animations have been created with the help from Claude AI (Anthropic)
 '''
 
 

@@ -1,6 +1,7 @@
 from duckify_simulation.duckify_sim.robot_control import SimRobotControl
 
 from src.logger import DataStore
+from src.stage import Stage
 from src.utils import ask_yes_no
 from src.config import *
 
@@ -13,7 +14,21 @@ from src.computation import assemble_segments, smoothing
 from src.segment import SideType
 
 class Pathfinding(Stage):
-    def __init__(self, datastore: DataStore, obstacles=OBSTACLE_STLS, side=SideType.LEFT, verbose=True):
+    def __init__(self, datastore: DataStore, obstacles: list = OBSTACLE_STLS, side: SideType = SideType.LEFT, verbose: bool = True):
+        """
+        Initialize the pathfinding stage.
+
+        Parameters
+        ----------
+        datastore : DataStore
+            The data store to use.
+        obstacles : list, optional
+            List of obstacle STL files to load.
+        side : SideType, optional
+            The side for which to find paths.
+        verbose : bool, optional
+            Whether to display verbose output.
+        """
         super().__init__(name="Pathfinding", datastore=datastore)
         self.obstacles = obstacles
         self.side = side

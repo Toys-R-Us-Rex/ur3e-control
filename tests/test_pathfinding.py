@@ -169,7 +169,7 @@ def _identity_obj2robot(p):
 _identity_obj2robot.T = np.eye(4)
 _identity_obj2robot.T_normal = np.eye(4)
 
-
+# TODO: Check Usage
 class TestDrawValidation:
     def test_approach_draw_validated(self, robot, clear_checker):
         """validate_tcp must be called for surface points."""
@@ -220,7 +220,7 @@ class TestDrawValidation:
         assert 1 in report[0]["skipped_indices"]
         assert report[0]["drawn_count"] < report[0]["original_count"]
 
-
+# TODO: Check Usage
 class TestSkipUnreachable:
     def test_skip_unreachable_produces_report(self, robot):
         """Mock checker fails on specific point, verify skip_report content."""
@@ -301,6 +301,7 @@ class TestSkipUnreachable:
 
 # ── load_and_plan (JSON → segments) ───────────────────────────
 
+# TODO: Check Usage
 class TestComputeDrawingPlan:
     def test_v1_json_normalizes_and_produces_segments(
         self, robot, clear_checker, tmp_path,

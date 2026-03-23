@@ -1,24 +1,78 @@
-'''
+"""
+Computational functions for handling robot motion planning and manipulation.
+
+Usage
+-----
+This module is designed to be used with our Duckify simulation environment,
+and the URBasic library from which it is derived:
+    https://github.com/ISC-HEI/ur3e-control
+
 MIT License
 
-Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
-'''
+Copyright (c) 2026 Savioz Pierre-Yves
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Author:     Savioz Pierre-Yves, with assistance from Claude AI (Anthropic)
+Co-Author:  Mariéthoz Cédric, with assistance from Copilot AI (Microsoft)
+Course:     HES-SO Valais-Wallis, Engineering Track 304
+"""
 
 import logging
 
 import numpy as np
 
-from src.segment import JointSegment, MotionType, SideType, TCPSegment
-from src.config import (
-    DRAW_V, DRAW_A, APPROACH_V, APPROACH_A, TRAVEL_V, TRAVEL_A,
-    HOVER_OFFSET,
-)
+from URBasic import TCP6D, Joint6D
+
+from URBasic.urScript import UrScript
+from src.safety import CollisionChecker
+from src.segment import *
+from src.config import *
 from src.utils import *
+from src.pathfinding import find_path
 
 log = logging.getLogger(__name__)
 
-def compute_draw_motion(trace, obj2robot, hover_offset=None, max_pts=None):
-    from URBasic import TCP6D
+# TODO: Check utility
+def compute_draw_motion(trace: dict, obj2robot: AtoB, hover_offset: float = None, max_pts: int = None):
+    """
+    Compute the motion for drawing a trace.
+
+    Parameters
+    ----------
+    trace : dict
+        The trace data containing the path.
+    obj2robot : AtoB
+        The transformation function from object to robot coordinates.
+    hover_offset : float, optional
+        The offset for the hover position.
+    max_pts : int, optional
+        Maximum number of points to consider from the path.
+
+    Returns
+    -------
+    points : numpy.ndarray
+        The computed points.
+    normals : numpy.ndarray
+        The computed normals.
+
+    """
 
     if hover_offset is None:
         hover_offset = HOVER_OFFSET
@@ -30,9 +84,23 @@ def compute_draw_motion(trace, obj2robot, hover_offset=None, max_pts=None):
     normals = np.array([entry[1] for entry in path])
     return points, normals
 
+# TODO: Check utility
+def points_to_tcps(points_robot: np.ndarray|list, normals_robot: np.ndarray|list):
+    """
+    Convert points and normals to a list of TCP6D objects.
 
-def points_to_tcps(points_robot, normals_robot):
-    from URBasic import TCP6D
+    Parameters
+    ----------
+    points_robot : array_like
+        The robot coordinates of the points.
+    normals_robot : array_like
+        The normals at each point.
+
+    Returns
+    -------
+    tcps : list of TCP6D
+        The converted TCP6D objects.
+    """
 
     tcps = []
     for pt, n in zip(points_robot, normals_robot):
@@ -40,8 +108,24 @@ def points_to_tcps(points_robot, normals_robot):
         tcps.append(TCP6D.createFromMetersRadians(pt[0], pt[1], pt[2], rv[0], rv[1], rv[2]))
     return tcps
 
-def trace_to_tcp(trace, obj2robot, max_pts=None):
-    from URBasic import TCP6D
+def trace_to_tcp(trace: dict, obj2robot: AtoB, max_pts: int=None):
+    """
+    Convert a trace to a list of TCP6D objects.
+
+    Parameters
+    ----------
+    trace : dict
+        The trace data containing the path.
+    obj2robot : AtoB
+        The transformation function from object to robot coordinates.
+    max_pts : int, optional
+        Maximum number of points to consider from the path.
+
+    Returns
+    -------
+    surface_tcps : list of TCP6D
+        The converted TCP6D objects.
+    """
 
     path = trace["path"]
     if max_pts is not None:
@@ -56,9 +140,28 @@ def trace_to_tcp(trace, obj2robot, max_pts=None):
 
     return surface_tcps
 
-def compute_positioning_motion(robot, checker, start_tcp, end_tcp):
-    from src.pathfinding import find_path
+def compute_positioning_motion(robot, checker: CollisionChecker, start_tcp: TCP6D, end_tcp: TCP6D):
+    """
+    Compute the motion for positioning the robot.
 
+    Parameters
+    ----------
+    robot : UrScript?
+        The robot instance.
+    checker : CollisionChecker
+        The collision checker instance.
+    start_tcp : TCP6D
+        The starting TCP position.
+    end_tcp : TCP6D
+        The ending TCP position.
+
+    Returns
+    -------
+    waypoints : list of TCP6D
+        The computed waypoints.
+    _joint_traj : list of Joint6D
+        The computed joint trajectory.
+    """
     waypoints = find_path(robot, checker, start_tcp, end_tcp)
 
     ok, fail_idx, reason, _joint_traj = checker.validate_path(
@@ -78,7 +181,8 @@ def compute_positioning_motion(robot, checker, start_tcp, end_tcp):
 # ---------------------------------------------------------------------------
 
 def _hover_tcp(surface_tcp, hover_offset=None):
-    from URBasic import TCP6D
+    """
+    """
 
     if hover_offset is None:
         hover_offset = HOVER_OFFSET
@@ -91,7 +195,9 @@ def _hover_tcp(surface_tcp, hover_offset=None):
     )
 
 
-def _validate_surface_points(checker, robot, surface_tcps, qnear=None):
+def _validate_surface_points(checker: CollisionChecker, robot: UrScript, surface_tcps, qnear=None):
+    """
+    """
     valid_checklist = []
     reasons = []
     joint_solutions = []

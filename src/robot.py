@@ -7,12 +7,29 @@ from URBasic.waypoint6d import TCP6D, Joint6D
 from duckify_simulation.duckify_sim.robot_control import SimRobotControl
 
 from src.config import *
+from src.utils import ask_yes_no
 
 import matplotlib.pyplot as plt
 
 from src.stage import Stage
 
 def move_simple(robot: SimRobotControl | UrScript, motion, ds: DataStore = None):
+    """
+    Move the robot to the specified waypoints.
+
+    Parameters
+    ----------
+    robot : SimRobotControl | UrScript
+        The robot control instance.
+    motion : list[Segment]
+        The list of segments to move through.
+    ds : DataStore, optional
+        The data store instance.
+
+    Returns
+    -------
+    None
+    """
     robot.movej(HOMEJ)
 
     # Create six empty joint lists
@@ -55,13 +72,26 @@ def move_simple(robot: SimRobotControl | UrScript, motion, ds: DataStore = None)
 
 class Robot(Stage):
     def __init__(self, datastore: DataStore, robot_ip: str):
+        """
+        Initialize the Robot stage.
+
+        Parameters
+        ----------
+        datastore : DataStore
+            The data store instance.
+        robot_ip : str
+            The IP address of the robot.
+        """
         super().__init__(name="Robot", datastore=datastore)
         self.robot_ip = robot_ip
     
     def run(self):
-        answer = input("Do you want to run the code on the REAL robot continue? y/n \n")
+        """
+        Run the robot stage.
+        """
+        answer = ask_yes_no("Do you want to run the code on the REAL robot continue? y/n \n")
 
-        if answer != "y":
+        if not answer:
             self.ds.log(f"Do not run on robot: {answer}")
             raise ValueError("You chose not the run on robot")
 

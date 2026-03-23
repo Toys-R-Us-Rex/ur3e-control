@@ -1,4 +1,5 @@
-"""UR3e forward and inverse kinematics using DH parameters.
+"""
+UR3e forward and inverse kinematics using DH parameters.
 
 Pure-Python analytical kinematics — no robot connection or simulator needed.
 

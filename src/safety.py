@@ -1,3 +1,38 @@
+"""
+Collision checking utilities for robot motion planning.
+
+Usage
+-----
+This module provides utilities for checking collisions in the robot's environment.
+
+MIT License
+
+Copyright (c) 2026 Savioz Pierre-Yves
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Author:     Savioz Pierre-Yves, with assistance from Claude AI (Anthropic)
+Comments:   Mariethoz Cédric, with assistance from Copilot AI (Microsoft)
+Course:     HES-SO Valais-Wallis, Engineering Track 304
+"""
+
+
 import math
 import numpy as np
 import pybullet as p
@@ -7,34 +42,24 @@ from scipy.spatial.transform import Rotation
 from pathlib import Path
 from URBasic import TCP6D
 
-from src.config import (
-    JOINT_LIMITS, TCP_Y_MAX, TCP_Z_MIN, TCP_Z_MAX,
-    UR3E_MAX_REACH, LINK_Z_MIN,
-    DRAWING_ANGLE, COLLISION_MARGIN, SELF_COLLISION_MARGIN
-)
+from duckify_simulation.duckify_sim.robot_control import SimRobotControl
+from src.config import *
 from src.kinematics import get_all_ik_solutions
-
-URDF_PATH = Path(__file__).resolve().parents[1] / 'duckify_simulation' / 'urdf' / 'ur3e.urdf'
-
-# Link indices for the flattened UR3e URDF:
-#   1=base_link_inertia, 2=shoulder, 3=upper_arm, 4=forearm,
-#   5=wrist_1, 6=wrist_2, 7=wrist_3, 8=flange, 9=tool0,
-#   10=wrist_cam, 11=hande_base, 12=left_finger, 13=right_finger, 14=pen
-SELF_COLLISION_PAIRS = [
-    (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9),
-    (1, 10), (1, 11), (1, 12), (1, 13), (1, 14),
-    (2, 5), (2, 6), (2, 7), (2, 8), (2, 9),
-    (2, 10), (2, 11), (2, 12), (2, 13), (2, 14),
-    (3, 6), (3, 7), (3, 8), (3, 9),
-    (3, 10), (3, 11), (3, 12), (3, 13), (3, 14),
-    (4, 7), (4, 8), (4, 9),
-    (4, 10), (4, 11), (4, 12), (4, 13), (4, 14),
-]
 
 
 class CollisionChecker:
 
-    def __init__(self, obstacle_stls=None, gui=False):
+    def __init__(self, obstacle_stls: list = None, gui: bool = False):
+        """
+        Initialize the collision checker.
+
+        Parameters
+        ----------
+        obstacle_stls : list, optional
+            List of obstacle STL files to load.
+        gui : bool, optional
+            Whether to display the simulation GUI.
+        """
         self.cid = p.connect(p.GUI if gui else p.DIRECT)
 
         # Load robot — π rotation around Z to match real-robot frame
@@ -108,20 +133,67 @@ class CollisionChecker:
     # -------------------------------------------------------------------------
 
     # moves instantly the robot to target joint angles position
-    def set_joint_angles(self, q):
+    def set_joint_angles(self, q: list):
+        """
+        Set the joint angles of the robot.
+
+        Parameters
+        ----------
+        q : list
+            The joint angles to set.
+        """
         for idx, angle in zip(self.joint_indices, q):
             p.resetJointState(self.robot_id, idx, float(angle), physicsClientId=self.cid)
 
 
-    def in_self_collision(self, margin=SELF_COLLISION_MARGIN):
+    def in_self_collision(self, margin: float = SELF_COLLISION_MARGIN) -> bool:
+        """
+        Check if the robot is in self-collision.
+
+        Parameters
+        ----------
+        margin : float, optional
+            The collision margin.
+
+        Returns
+        -------
+        bool
+            True if the robot is in self-collision, False otherwise.
+        """
         return self.self_detector.in_collision(margin=margin)
 
-    def in_obstacle_collision(self, margin=COLLISION_MARGIN):
+    def in_obstacle_collision(self, margin: float = COLLISION_MARGIN) -> bool:
+        """
+        Check if the robot is in obstacle collision.
+
+        Parameters
+        ----------
+        margin : float, optional
+            The collision margin.
+
+        Returns
+        -------
+        bool
+            True if the robot is in obstacle collision, False otherwise.
+        """
         if self.obstacle_detector is None:
             return False
         return self.obstacle_detector.in_collision(margin=margin)
 
-    def check_workspace_bounds(self, tcp):
+    def check_workspace_bounds(self, tcp: TCP6D) -> tuple[bool, str]:
+        """
+        Check if the TCP is within workspace bounds.
+
+        Parameters
+        ----------
+        tcp : TCP6D
+            The TCP pose to check.
+
+        Returns
+        -------
+        tuple[bool, str]
+            A tuple indicating if the TCP is within bounds and a reason string.
+        """
         x, y, z = tcp.x, tcp.y, tcp.z
         if y > TCP_Y_MAX:
             return False, f"TCP Y={y:.4f} > {TCP_Y_MAX}"
@@ -134,7 +206,20 @@ class CollisionChecker:
         return True, ""
 
     # not being used at the mment
-    def check_joint_limits(self, q):
+    def check_joint_limits(self, q: list) -> tuple[bool, str]:
+        """
+        Check if the joint angles are within limits.
+
+        Parameters
+        ----------
+        q : list
+            The joint angles to check.
+
+        Returns
+        -------
+        tuple[bool, str]
+            A tuple indicating if the joint angles are within limits and a reason string.
+        """
         q_list = q.toList() if hasattr(q, 'toList') else list(q)
         for i, (angle, limit) in enumerate(zip(q_list, JOINT_LIMITS)):
             if limit is None:
@@ -148,9 +233,36 @@ class CollisionChecker:
 
     # Entry point of the pathfinding pipeline , checks safety, IK and cone orientation if needed
     # returns a new tcp valid if one has been found
-    def validate_tcp(self, robot, tcp, qnear=None, margin=COLLISION_MARGIN,
-                     check_obstacle=True, orientation_search=False,
-                     max_cone_angle=math.radians(DRAWING_ANGLE), cone_step=math.radians(5)):
+    def validate_tcp(self, robot: SimRobotControl, tcp: TCP6D, qnear=None, margin=COLLISION_MARGIN,
+                     check_obstacle: bool=True, orientation_search: bool=False,
+                     max_cone_angle: float=math.radians(DRAWING_ANGLE), cone_step: float=math.radians(5)) -> tuple[bool, list, str, TCP6D]:
+        """
+        Validate the TCP pose for safety.
+
+        Parameters
+        ----------
+        robot : SimRobotControl
+            The robot control instance.
+        tcp : TCP6D
+            The TCP pose to validate.
+        qnear : list, optional
+            The nearest joint angles.
+        margin : float, optional
+            The collision margin.
+        check_obstacle : bool, optional
+            Whether to check obstacle collisions.
+        orientation_search : bool, optional
+            Whether to perform orientation search.
+        max_cone_angle : float, optional
+            The maximum cone angle for orientation search.
+        cone_step : float, optional
+            The step size for orientation search.
+
+        Returns
+        -------
+        tuple[bool, list, str, TCP6D]
+            A tuple indicating if the TCP is valid, the joint angles, a reason string, and the adjusted TCP pose.
+        """
         ok, reason = self.check_workspace_bounds(tcp)
         if not ok:
             return False, None, reason, tcp
@@ -169,7 +281,28 @@ class CollisionChecker:
 
 
     # Reurns all IK solution, sort them by qnear, then returns the first safe waypoint
-    def _try_ik_and_collision(self, robot, tcp, qnear, margin, check_obstacle):
+    def _try_ik_and_collision(self, robot: SimRobotControl, tcp: TCP6D, qnear: list, margin: float, check_obstacle: bool) -> tuple[bool, list, str]:
+        """
+        Try to find a valid IK solution and check for collisions.
+
+        Parameters
+        ----------
+        robot : SimRobotControl
+            The robot control instance.
+        tcp : TCP6D
+            The TCP pose to validate.
+        qnear : list
+            The nearest joint angles.
+        margin : float
+            The collision margin.
+        check_obstacle : bool
+            Whether to check obstacle collisions.
+
+        Returns
+        -------
+        tuple[bool, list, str]
+            A tuple indicating if a valid solution is found, the joint angles, and a reason string.
+        """
         candidates = get_all_ik_solutions(tcp, robot._tcp_offset, robot._model_correction)
         if not candidates:
             return False, None, "IK has no solution"
@@ -221,7 +354,32 @@ class CollisionChecker:
         return False, None, first_reason or "IK has no solution"
 
     # Changes slightly the angle on which to search for analytical IK within a cone of angle [max_cone_angle]
-    def _cone_search(self, robot, tcp, qnear, margin, check_obstacle, max_cone_angle, cone_step):
+    def _cone_search(self, robot: SimRobotControl, tcp: TCP6D, qnear: list, margin: float, check_obstacle: bool, max_cone_angle: float, cone_step: float) -> tuple[list, TCP6D]:
+        """
+        Search for a valid IK solution within a cone of orientations.
+
+        Parameters
+        ----------
+        robot : SimRobotControl
+            The robot control instance.
+        tcp : TCP6D
+            The TCP pose to validate.
+        qnear : list
+            The nearest joint angles.
+        margin : float
+            The collision margin.
+        check_obstacle : bool
+            Whether to check obstacle collisions.
+        max_cone_angle : float
+            The maximum cone angle for orientation search.
+        cone_step : float
+            The step size for orientation search.
+
+        Returns
+        -------
+        tuple[list, TCP6D]
+            A tuple containing the joint angles and the adjusted TCP pose.
+        """
         tcp_xyz = np.array([tcp.x, tcp.y, tcp.z])
         original_rot = Rotation.from_rotvec([tcp.rx, tcp.ry, tcp.rz])
 
@@ -244,8 +402,31 @@ class CollisionChecker:
     # -------------------------------------------------------------------------
 
 
-    def validate_path(self, robot, waypoints_tcp, margin=COLLISION_MARGIN,
-                      qnear=None, check_obstacle=True, orientation_search=False):
+    def validate_path(self, robot: SimRobotControl, waypoints_tcp: list[TCP6D], margin: float = COLLISION_MARGIN,
+                      qnear: list = None, check_obstacle: bool = True, orientation_search: bool = False) -> tuple[bool, int, str, list]:
+        """
+        Validate a path of TCP waypoints for collision avoidance.
+
+        Parameters
+        ----------
+        robot : SimRobotControl
+            The robot control instance.
+        waypoints_tcp : list[TCP6D]
+            The list of TCP poses to validate.
+        margin : float
+            The collision margin.
+        qnear : list
+            The nearest joint angles.
+        check_obstacle : bool
+            Whether to check obstacle collisions.
+        orientation_search : bool
+            Whether to perform orientation search.
+
+        Returns
+        -------
+        tuple[bool, int, str, list]
+            A tuple indicating if the path is valid, the index of the first invalid waypoint, a reason string, and the joint trajectory.
+        """
         joint_trajectory = []
 
         for i, tcp in enumerate(waypoints_tcp):
@@ -263,7 +444,22 @@ class CollisionChecker:
 
 
 
-def setup_checker(obstacle_stls, gui=True):
+def setup_checker(obstacle_stls: list, gui: bool = True) -> CollisionChecker:
+    """
+    Set up the collision checker with the given obstacle STL files.
+
+    Parameters
+    ----------
+    obstacle_stls : list
+        A list of paths to the obstacle STL files.
+    gui : bool, optional
+        Whether to display the PyBullet GUI, by default True.
+
+    Returns
+    -------
+    CollisionChecker
+        The initialized collision checker.
+    """
     checker = CollisionChecker(obstacle_stls=obstacle_stls, gui=gui)
 
     print(f"PyBullet GUI running (cid={checker.cid})")
