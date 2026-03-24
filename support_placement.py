@@ -18,6 +18,7 @@ from urbasic.URBasic.waypoint6d import TCP6D, Joint6D
 
 JUMP_TO_VIS = False
 VIS_DELAY = 0.1
+DEBUG = False
 
 
 class SupportPlacer:
@@ -171,12 +172,22 @@ def main():
     placer = SupportPlacer()
 
     placements: list[Placement] = generate_placements(
-        min_radius=20.0, max_radius=60, min_angle=-np.pi, max_angle=0, z=0.155, count=4
+        min_radius=0.20,
+        max_radius=0.60,
+        min_angle=-np.pi,
+        max_angle=0,
+        z=0.155,
+        count=4,
     )
     results_path: str = "support_placement_results.json"
 
     for angle, pos, x_filter, y_filter in tqdm.tqdm(placements, desc="Placements"):
-        print(f"{x_filter=} {y_filter=}")
+        if DEBUG:
+            print("#" * 28)
+            print(f"# Filters: x={x_filter:2d} y={y_filter:2d}       #")
+            print(f"# Angle: {angle:3.0f}               #")
+            print(f"# Pos: ({pos[0]:5.2f},{pos[1]:5.2f},{pos[2]:5.2f}) #")
+            print("#" * 28)
         ratio: float = placer.run(angle, pos, x_filter, y_filter)
 
         results = []
