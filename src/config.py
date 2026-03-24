@@ -7,6 +7,7 @@ Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 # Collision margins
 COLLISION_MARGIN = 0            # margin for obstacle collision checks
 SELF_COLLISION_MARGIN = 0.01   # margin for self-collision checks (5mm safety buffer)
+MAX_JOINT_JUMP = 1.0           # max allowed single-joint difference from qnear (radians)
 
 # Default home position
 from URBasic.waypoint6d import Joint6D
@@ -73,8 +74,8 @@ TCPS_20 = [
 ]
 
 # Default object-to-robot transform parameters
-OBJ2ROBOT_RZ_DEG       = 180.0
-OBJ2ROBOT_TRANSLATION  = (0.32, -0.4, 0.155)
+OBJ2ROBOT_RZ_DEG       = 270.0
+OBJ2ROBOT_TRANSLATION  = (0.40, -0.35, 0.155)
 OBJ2ROBOT_SCALE        = 0.001          # mm → meters
 
 # Scene for pybullet collision testing

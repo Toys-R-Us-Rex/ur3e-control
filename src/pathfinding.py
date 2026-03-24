@@ -25,7 +25,7 @@ def find_path(robot, checker, A_tcp, B_tcp, depth=0, qnear=None):
     # Try the direct segment
     ok, _fail_idx, _reason, _traj = checker.validate_path(
         robot, [A_tcp, B_tcp], qnear=qnear,
-        orientation_search=True,
+        orientation_search=True, check_joint_jump=False,
     )
     if ok:
         return [A_tcp, B_tcp]
@@ -74,7 +74,7 @@ def lift_midpoint(robot, checker, A_tcp, B_tcp, qnear=None):
             float(mid_rotvec[0]), float(mid_rotvec[1]), float(mid_rotvec[2]),
         )
         ok, _q, last_reason, _ = checker.validate_tcp(
-            robot, tcp, qnear=qnear, orientation_search=True,
+            robot, tcp, qnear=qnear, orientation_search=True, check_joint_jump=False,
         )
         if ok:
             return tcp

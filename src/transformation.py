@@ -188,8 +188,8 @@ def extract_pybullet_pose(obj2robot):
 
 # gets the transform data from the pickle files.
 def load_obj2robot(record, rz_deg=OBJ2ROBOT_RZ_DEG):
-    a = record.load_transformation("save_data_test/20260317/transformation_0.pkl")
-    T_loaded = a.T_position
+    a = record.load_transformation("save_data_test/20260317/transformation_0.pkl") remotes/origin/feat/add-arguments-main-robot
+    T_loaded = None
     if T_loaded is not None:
         translation = tuple(T_loaded[:3, 3])
         print("using the loaded transfomration from pickl")

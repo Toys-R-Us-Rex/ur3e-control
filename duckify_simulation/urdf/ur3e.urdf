@@ -344,7 +344,7 @@
   <joint name="pen_joint" type="fixed">
     <parent link="robotiq_hande_base_link"/>
     <child link="pen_link"/>
-    <origin xyz="0 0 0.1051" rpy="3.141592653589793 0 0"/>
+    <origin xyz="0 0 0.1031" rpy="3.141592653589793 0 0"/>
   </joint>
 
 </robot>

@@ -99,7 +99,7 @@ def _validate_surface_points(checker, robot, surface_tcps, qnear=None):
     for tcp in surface_tcps:
         ok, q, reason, _ = checker.validate_tcp(
             robot, tcp, qnear=qnear, check_obstacle=False,
-            orientation_search=True,
+            orientation_search=True, check_joint_jump=False,
         )
         valid_checklist.append(ok)
         reasons.append(reason)
@@ -134,7 +134,7 @@ def _find_valid_hover(checker, robot, run_surface, surface_joints,
         qnear = surface_joints[i] if surface_joints is not None else None
         ok, q, reason, h_used = checker.validate_tcp(
             robot, h_tcp, qnear=qnear,
-            check_obstacle=True, orientation_search=True,
+            check_obstacle=True, orientation_search=True, check_joint_jump=False,
         )
         if ok:
             return h_used, q, trim
@@ -308,10 +308,19 @@ def load_traces(json_path):
 
     traces = data["traces"]
 
+    # for trace in traces:
+    #     trace["path"] = trace["path"][::5]
+
+
+
+
     # Legacy usage: Normalize v1 -> v2: spread face normal to each waypoint
     for trace in traces:
         if "face" in trace:
             trace["path"] = [[pt, trace["face"]] for pt in trace["path"]]
+
+
+    # traces.append(traces[0][0])
 
     return traces, data
 

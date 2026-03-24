@@ -10,7 +10,8 @@ from URBasic import TCP6D
 from src.config import (
     JOINT_LIMITS, TCP_Y_MAX, TCP_Z_MIN, TCP_Z_MAX,
     UR3E_MAX_REACH, LINK_Z_MIN,
-    DRAWING_ANGLE, COLLISION_MARGIN, SELF_COLLISION_MARGIN
+    DRAWING_ANGLE, COLLISION_MARGIN, SELF_COLLISION_MARGIN,
+    MAX_JOINT_JUMP
 )
 from src.kinematics import get_all_ik_solutions
 
@@ -150,17 +151,18 @@ class CollisionChecker:
     # returns a new tcp valid if one has been found
     def validate_tcp(self, robot, tcp, qnear=None, margin=COLLISION_MARGIN,
                      check_obstacle=True, orientation_search=False,
-                     max_cone_angle=math.radians(DRAWING_ANGLE), cone_step=math.radians(5)):
+                     max_cone_angle=math.radians(DRAWING_ANGLE), cone_step=math.radians(5),
+                     check_joint_jump=True):
         ok, reason = self.check_workspace_bounds(tcp)
         if not ok:
             return False, None, reason, tcp
 
-        ok, q, reason = self._try_ik_and_collision(robot, tcp, qnear, margin, check_obstacle)
+        ok, q, reason = self._try_ik_and_collision(robot, tcp, qnear, margin, check_obstacle, check_joint_jump)
         if ok:
             return True, q, "", tcp
 
         if orientation_search:
-            result = self._cone_search(robot, tcp, qnear, margin, check_obstacle, max_cone_angle, cone_step)
+            result = self._cone_search(robot, tcp, qnear, margin, check_obstacle, max_cone_angle, cone_step, check_joint_jump)
             if result:
                 q, adjusted_tcp = result
                 return True, q, "", adjusted_tcp
@@ -169,7 +171,7 @@ class CollisionChecker:
 
 
     # Reurns all IK solution, sort them by qnear, then returns the first safe waypoint
-    def _try_ik_and_collision(self, robot, tcp, qnear, margin, check_obstacle):
+    def _try_ik_and_collision(self, robot, tcp, qnear, margin, check_obstacle, check_joint_jump=True):
         candidates = get_all_ik_solutions(tcp, robot._tcp_offset, robot._model_correction)
         if not candidates:
             return False, None, "IK has no solution"
@@ -181,7 +183,7 @@ class CollisionChecker:
             for c in candidates:
                 diff = np.array(c.toList()) - qnear_arr
                 distances.append(np.sum(diff ** 2))
-            candidates = [c for _, c in sorted(zip(distances, candidates))]
+            candidates = [c for _, _, c in sorted(zip(distances, range(len(candidates)), candidates))]
 
         first_reason = None
         for q in candidates:
@@ -216,12 +218,21 @@ class CollisionChecker:
                     first_reason = "Obstacle collision"
                 continue
 
+            # Max joint jump check (disabled for travel moves)
+            if check_joint_jump and qnear is not None:
+                q_arr = np.array(q.toList())
+                max_diff = np.max(np.abs(q_arr - qnear_arr))
+                if max_diff > MAX_JOINT_JUMP:
+                    if first_reason is None:
+                        first_reason = f"Joint jump {max_diff:.2f} rad > {MAX_JOINT_JUMP}"
+                    continue
+
             return True, q, ""
 
         return False, None, first_reason or "IK has no solution"
 
     # Changes slightly the angle on which to search for analytical IK within a cone of angle [max_cone_angle]
-    def _cone_search(self, robot, tcp, qnear, margin, check_obstacle, max_cone_angle, cone_step):
+    def _cone_search(self, robot, tcp, qnear, margin, check_obstacle, max_cone_angle, cone_step, check_joint_jump=True):
         tcp_xyz = np.array([tcp.x, tcp.y, tcp.z])
         original_rot = Rotation.from_rotvec([tcp.rx, tcp.ry, tcp.rz])
 
@@ -235,7 +246,7 @@ class CollisionChecker:
                 candidate_tcp = TCP6D.createFromMetersRadians(
                     *tcp_xyz.tolist(), float(rv[0]), float(rv[1]), float(rv[2])
                 )
-                ok, q, _ = self._try_ik_and_collision(robot, candidate_tcp, qnear, margin, check_obstacle)
+                ok, q, _ = self._try_ik_and_collision(robot, candidate_tcp, qnear, margin, check_obstacle, check_joint_jump)
                 if ok:
                     return q, candidate_tcp
             tilt += cone_step
@@ -245,7 +256,8 @@ class CollisionChecker:
 
 
     def validate_path(self, robot, waypoints_tcp, margin=COLLISION_MARGIN,
-                      qnear=None, check_obstacle=True, orientation_search=False):
+                      qnear=None, check_obstacle=True, orientation_search=False,
+                      check_joint_jump=True):
         joint_trajectory = []
 
         for i, tcp in enumerate(waypoints_tcp):
@@ -253,6 +265,7 @@ class CollisionChecker:
                 robot, tcp, qnear=qnear, margin=margin,
                 check_obstacle=check_obstacle,
                 orientation_search=orientation_search,
+                check_joint_jump=check_joint_jump,
             )
             if not ok:
                 return False, i, reason, joint_trajectory

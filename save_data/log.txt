@@ -169,3 +169,232 @@
 2026-03-20 10:34:12 - Loaded calibration data from file save_data/calibration_default.pkl
 2026-03-20 10:34:12 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
 2026-03-20 10:34:52 - Saved history entry 34 for waypoints -> save_data/waypoints_34.pkl
+2026-03-23 12:11:20 - Loaded Trace segments data from file save_data_test/20260318/trace_segments_0.pkl
+2026-03-23 12:13:14 - Loaded Trace segments data from file save_data_test/20260318/trace_segments_0.pkl
+2026-03-23 12:14:01 - Loaded Trace segments data from file save_data_test/20260318/trace_segments_0.pkl
+2026-03-23 12:14:21 - Loaded Trace segments data from file save_data_test/20260318/trace_segments_0.pkl
+2026-03-23 12:15:20 - Loaded Trace segments data from file save_data_test/20260318/trace_segments_0.pkl
+2026-03-23 12:15:44 - Loaded Trace segments data from file save_data_test/20260318/trace_segments_0.pkl
+2026-03-23 12:16:47 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 12:16:47 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 12:17:14 - Saved history entry 35 for waypoints -> save_data/waypoints_35.pkl
+2026-03-23 12:17:54 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 12:17:54 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 12:18:08 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 12:18:08 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 12:19:15 - Saved history entry 36 for waypoints -> save_data/waypoints_36.pkl
+2026-03-23 12:21:30 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 12:21:30 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 12:22:03 - Loaded Trace segments data from file save_data/waypoints_36.pkl
+2026-03-23 12:28:43 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:30:38 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:31:11 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:33:03 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:34:45 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:35:30 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:35:44 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:37:56 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:46:33 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:48:39 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:49:05 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:49:51 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:50:15 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:51:35 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:52:31 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:56:28 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:57:23 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:57:39 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:58:17 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:58:58 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 12:59:28 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:00:00 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:00:28 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:00:56 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:02:31 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:07:04 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:19:14 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:20:07 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:32:27 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:32:27 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:35:51 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:36:48 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:36:48 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:37:44 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:37:44 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:38:58 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:38:58 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:43:28 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:43:28 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:43:52 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:43:52 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:45:43 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:45:43 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:46:28 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:46:28 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:47:12 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:47:12 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:48:16 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:48:16 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:50:36 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:50:36 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 13:50:52 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:50:52 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:51:32 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:51:32 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 13:52:19 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 13:52:19 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 14:09:16 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 14:09:16 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 14:15:55 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 14:15:55 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 14:32:09 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 14:32:09 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 14:46:11 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 14:46:11 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 15:02:14 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 15:02:14 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 15:15:32 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 15:15:32 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 15:23:07 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 15:23:07 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 15:44:32 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 15:44:32 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 15:58:11 - Saved history entry 37 for waypoints -> save_data/waypoints_37.pkl
+2026-03-23 16:01:05 - Loaded waypoints data from file save_data/waypoints_36.pkl
+2026-03-23 16:01:05 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:11:13 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:11:13 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:11:39 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:11:39 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:12:25 - Saved history entry 38 for waypoints -> save_data/waypoints_38.pkl
+2026-03-23 16:14:18 - Loaded waypoints data from file save_data/waypoints_38.pkl
+2026-03-23 16:14:18 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:17:34 - Loaded waypoints data from file save_data/waypoints_38.pkl
+2026-03-23 16:17:34 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:22:58 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:22:58 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:23:25 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:23:25 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:23:58 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:23:58 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:24:32 - Saved history entry 39 for waypoints -> save_data/waypoints_39.pkl
+2026-03-23 16:25:24 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:25:24 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:28:43 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:28:43 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:29:16 - Saved history entry 40 for waypoints -> save_data/waypoints_40.pkl
+2026-03-23 16:30:33 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:30:33 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:31:07 - Saved history entry 41 for waypoints -> save_data/waypoints_41.pkl
+2026-03-23 16:34:10 - Loaded waypoints data from file save_data/waypoints_41.pkl
+2026-03-23 16:34:10 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:38:24 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:38:25 - Loaded waypoints data from file save_data/waypoints_41.pkl
+2026-03-23 16:38:25 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:51:32 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:51:32 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:54:34 - Saved history entry 42 for waypoints -> save_data/waypoints_42.pkl
+2026-03-23 16:55:56 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:55:56 - Loaded waypoints data from file save_data/waypoints_41.pkl
+2026-03-23 16:55:56 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 16:57:19 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 16:57:20 - Loaded waypoints data from file save_data/waypoints_42.pkl
+2026-03-23 16:57:20 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 17:00:26 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 17:00:26 - Loaded waypoints data from file save_data/waypoints_42.pkl
+2026-03-23 17:00:26 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 17:07:41 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 17:07:42 - Loaded waypoints data from file save_data/waypoints_42.pkl
+2026-03-23 17:07:42 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 17:12:58 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 17:12:58 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 17:13:18 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-23 17:13:18 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 17:20:58 - Saved history entry 43 for waypoints -> save_data/waypoints_43.pkl
+2026-03-23 17:22:00 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-23 17:22:01 - Loaded waypoints data from file save_data/waypoints_43.pkl
+2026-03-23 17:22:01 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 09:28:24 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 09:28:24 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 09:32:08 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 09:32:09 - Loaded waypoints data from file save_data/waypoints_43.pkl
+2026-03-24 09:32:09 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 09:45:57 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 09:45:58 - Loaded waypoints data from file save_data/waypoints_42.pkl
+2026-03-24 09:45:58 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:15:46 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:15:46 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:16:33 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:16:33 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:17:15 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:17:15 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:20:18 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:20:18 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:22:23 - Saved history entry 44 for waypoints -> save_data/waypoints_44.pkl
+2026-03-24 10:27:49 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:27:49 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:29:25 - Saved history entry 45 for waypoints -> save_data/waypoints_45.pkl
+2026-03-24 10:35:34 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:35:35 - Loaded waypoints data from file save_data/waypoints_42.pkl
+2026-03-24 10:35:35 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:36:34 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:36:36 - Loaded waypoints data from file save_data/waypoints_45.pkl
+2026-03-24 10:36:36 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:38:58 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:38:58 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:41:33 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:41:33 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:45:19 - Saved history entry 46 for waypoints -> save_data/waypoints_46.pkl
+2026-03-24 10:45:50 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:45:52 - Loaded waypoints data from file save_data/waypoints_46.pkl
+2026-03-24 10:45:52 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:51:54 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:51:54 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:53:20 - Saved history entry 47 for waypoints -> save_data/waypoints_47.pkl
+2026-03-24 10:54:28 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:54:29 - Loaded waypoints data from file save_data/waypoints_47.pkl
+2026-03-24 10:54:29 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 10:58:49 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 10:58:50 - Loaded waypoints data from file save_data/waypoints_47.pkl
+2026-03-24 10:58:50 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 11:52:56 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 11:52:56 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 11:53:30 - Saved history entry 48 for waypoints -> save_data/waypoints_48.pkl
+2026-03-24 11:54:15 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 11:54:15 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 11:56:35 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 11:56:35 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 11:58:45 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 11:58:45 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:03:54 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:03:54 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:10:52 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:10:52 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:11:45 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:11:45 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:15:45 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:15:45 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:25:28 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:25:28 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:25:57 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:25:57 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:26:26 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:26:26 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:32:21 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:32:21 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 12:37:17 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 12:37:17 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 13:31:45 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 13:31:45 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 13:32:06 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 13:32:06 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 13:32:41 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 13:32:41 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 13:34:00 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 13:34:00 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 13:35:41 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 13:35:41 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 13:51:09 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 13:51:09 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl
+2026-03-24 14:07:40 - Loaded calibration data from file save_data/calibration_default.pkl
+2026-03-24 14:07:40 - Loaded transformation data from file save_data_test/20260317/transformation_0.pkl

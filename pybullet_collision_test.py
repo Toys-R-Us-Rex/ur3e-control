@@ -47,7 +47,11 @@ record = DataStore()
 home = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
 # file_path = "duckify_simulation/paths/duck_uv-test_1_triangle-trace.json"
 # file_path = "duckify_simulation/paths/duck_uv-test_2_circle-trace.json"
-file_path = "duckify_simulation/paths/duck_uv-dot-trace.json"
+# file_path = "duckify_simulation/paths/duck_uv-dot-trace.json"
+# file_path = "duckify_simulation/paths/square-left-trace.json"
+# file_path = "duckify_simulation/paths/duck_uv-test_8_on_head-trace.json"
+# file_path = "duckify_simulation/paths/duck_uv-test_4_triangle_on_bill-trace.json"
+file_path = "duckify_simulation/paths/duck_uv-test_10_full_body_line-trace.json"
 
 # Stage 0: setup robot
 robot = SimRobotControl()
@@ -110,8 +114,6 @@ if not JUMP_TO_VIS:
                                      surface_tcps_per_trace=surface_tcps_per_trace)
 
     smoothing(robot, checker, segments, home)
-
-
 
 
     input("\nPress ENTER to visualize the final plan...")
