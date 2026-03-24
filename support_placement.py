@@ -1,5 +1,6 @@
 import json
 import os
+import random
 
 import numpy as np
 import pybullet as pb
@@ -75,7 +76,7 @@ class SupportPlacer:
                 obs["orientation"] = self.pb_quat
 
     def setup_pybullet(self):
-        self.checker = setup_checker(OBSTACLE_STLS, gui=False)
+        self.checker = setup_checker(OBSTACLE_STLS, gui=True)
 
         # to modify the rotation central point on the GUI
         pb.resetDebugVisualizerCamera(
@@ -132,15 +133,50 @@ class SupportPlacer:
             print("PyBullet disconnected")
 
 
+Placement = tuple[float, tuple[float, float, float], int, int]
+
+
+def generate_placements(
+    min_radius: float,
+    max_radius: float,
+    min_angle: float,
+    max_angle: float,
+    z: float,
+    count: int,
+) -> list[Placement]:
+    placements: list[Placement] = []
+    radius_range: float = max_radius - min_radius
+    angle_range: float = max_angle - min_angle
+    for _ in range(count):
+        radius: float = random.random() * radius_range + min_radius
+        angle: float = random.random() * angle_range + min_angle
+        x: float = np.cos(angle) * radius
+        y: float = np.sin(angle) * radius
+
+        for r in range(4):
+            rot_angle: float = r * 90.0
+            x_filter: int = 0
+            y_filter: int = 0
+            if r % 2 == 0:
+                y_filter = -1 if y > 0 else 1
+            else:
+                x_filter = -1 if x > 0 else 1
+
+            placements.append((rot_angle, (x, y, z), x_filter, y_filter))
+
+    return placements
+
+
 def main():
     placer = SupportPlacer()
 
-    positions: list[tuple[float, tuple[float, float, float], int, int]] = [
-        (270.0, (0.40, -0.35, 0.155), -1, 0)
-    ]
+    placements: list[Placement] = generate_placements(
+        min_radius=20.0, max_radius=60, min_angle=-np.pi, max_angle=0, z=0.155, count=4
+    )
     results_path: str = "support_placement_results.json"
 
-    for angle, pos, x_filter, y_filter in tqdm.tqdm(positions, desc="Positions"):
+    for angle, pos, x_filter, y_filter in tqdm.tqdm(placements, desc="Placements"):
+        print(f"{x_filter=} {y_filter=}")
         ratio: float = placer.run(angle, pos, x_filter, y_filter)
 
         results = []
