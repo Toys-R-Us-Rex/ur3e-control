@@ -7,6 +7,7 @@ Copyright (c) 2026 HES-SO Valais-Wallis, Engineering Track 304
 import logging
 
 import numpy as np
+import tqdm
 
 from src.segment import JointSegment, MotionType, SideType, TCPSegment
 from src.config import (
@@ -96,7 +97,7 @@ def _validate_surface_points(checker, robot, surface_tcps, qnear=None):
     reasons = []
     joint_solutions = []
 
-    for tcp in surface_tcps:
+    for tcp in tqdm.tqdm(surface_tcps, unit="pt", leave=False):
         ok, q, reason, _ = checker.validate_tcp(
             robot, tcp, qnear=qnear, check_obstacle=False,
             orientation_search=True, check_joint_jump=False,

@@ -1,60 +1,81 @@
-from matplotlib import pyplot as plt
-import numpy as np
+import json
+import os
 
+import numpy as np
 import pybullet as pb
+import tqdm
+import trimesh
 
 from duckify_simulation.duckify_sim.robot_control import SimRobotControl
-from src.computation import assemble_segments, collect_joint_waypoints, load_and_convert_to_tcp, smoothing
+from src.computation import load_and_convert_to_tcp
 from src.config import OBSTACLE_STLS
 from src.logger import DataStore
-from src.pybullet_helpers import animate_plan, clear_bodies, find_hovers, preview_traces, split_and_visualize, validate_and_visualize, visualize_plan
+from src.pybullet_helpers import clear_bodies, validate_and_visualize
 from src.safety import setup_checker
 from src.transformation import extract_pybullet_pose, load_obj2robot
-from urbasic.URBasic.waypoint6d import Joint6D
-
+from urbasic.URBasic.waypoint6d import TCP6D, Joint6D
 
 JUMP_TO_VIS = False
 VIS_DELAY = 0.1
 
+
 class SupportPlacer:
     def __init__(self):
         self.record = DataStore()
-        self.home = Joint6D.createFromRadians(1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849)
-        self.file_path = "duckify_simulation/paths/duck_uv-test_1_triangle-trace.json"
+        self.home = Joint6D.createFromRadians(
+            1.8859, -1.4452, 1.2389, -1.3639, -1.5693, -0.3849
+        )
+        self.model_path = "duckify_simulation/3d_objects/duck_uv.stl"
+        self.file_path = "duckify_simulation/paths/random.json"
+        # file_path = "duckify_simulation/paths/duck_uv-test_1_triangle-trace.json"
         # file_path = "duckify_simulation/paths/duck_uv-test_2_circle-trace.json"
         # file_path = "duckify_simulation/paths/duck_uv-dot-trace.json"
         # file_path = "duckify_simulation/paths/square-left-trace.json"
         # file_path = "duckify_simulation/paths/duck_uv-test_8_on_head-trace.json"
         # file_path = "duckify_simulation/paths/duck_uv-test_4_triangle_on_bill-trace.json"
-        #file_path = "duckify_simulation/paths/duck_uv-test_10_full_body_line-trace.json"
+        # file_path = "duckify_simulation/paths/duck_uv-test_10_full_body_line-trace.json"
         self.robot: SimRobotControl = SimRobotControl()
-    
-    def run(self):
+
+    def run(
+        self,
+        support_angle: float,
+        translation: tuple[float, float, float],
+        x_filter: int = 0,
+        y_filter: int = 0,
+    ) -> float:
         self.setup_robot()
-        self.setup_workspace()
+        self.setup_workspace(support_angle, translation)
         self.setup_pybullet()
-        self.load_trace()
-        self.validate()
+        self.load_model()
+        self.load_trace(x_filter, y_filter)
+        ratio: float = self.validate()
         self.clean()
-    
+        return ratio
+
+    def load_model(self):
+        self.model = trimesh.load_mesh(self.model_path)
+        x, y, z, _, _, _ = self.obj2robot((0, 0, 0, 1, 0, 0))
+        self.model_center = (x, y, z)
+        print("model center:", self.model_center)
+
     def setup_robot(self):
-        _, tcp_offset = self.record.load_calibration("save_data/calibration_default.pkl")
+        _, tcp_offset = self.record.load_calibration(
+            "save_data/calibration_default.pkl"
+        )
         self.robot.set_tcp(tcp_offset)
-    
-    def setup_workspace(self):
+
+    def setup_workspace(self, angle: float, translation: tuple[float, float, float]):
         self.obj2robot = load_obj2robot(
-            self.record,
-            rz_deg=270.0,
-            translation=(0.40, -0.35, 0.155)
+            self.record, rz_deg=angle, translation=translation
         )
         self.pb_pos, self.pb_quat, self.pb_scale = extract_pybullet_pose(self.obj2robot)
         for obs in OBSTACLE_STLS:
-            if 'position' not in obs:
-                obs['position'] = self.pb_pos
-                obs['orientation'] = self.pb_quat
-    
+            if "position" not in obs:
+                obs["position"] = self.pb_pos
+                obs["orientation"] = self.pb_quat
+
     def setup_pybullet(self):
-        self.checker = setup_checker(OBSTACLE_STLS, gui=True)
+        self.checker = setup_checker(OBSTACLE_STLS, gui=False)
 
         # to modify the rotation central point on the GUI
         pb.resetDebugVisualizerCamera(
@@ -68,22 +89,43 @@ class SupportPlacer:
         self.checker.set_joint_angles(self.home.toList())
         print(f"\nSet PyBullet robot to home: {self.home.toList()}")
 
-    def load_trace(self):
-        self.surface_tcps_per_trace, self.traces, self.data = load_and_convert_to_tcp(self.file_path, self.obj2robot, max_pts=1000)
+    def load_trace(self, x_filter: int, y_filter: int):
+        surface_tcps_per_trace: list[list[TCP6D]]
+        surface_tcps_per_trace, self.traces, self.data = load_and_convert_to_tcp(
+            self.file_path, self.obj2robot, max_pts=1000
+        )
         print(f"Loaded {len(self.traces)} traces, transformed to TCP6D")
-        #preview_traces(self.checker, self.surface_tcps_per_trace)
+        # preview_traces(self.checker, self.surface_tcps_per_trace)
+        traces: list[list[TCP6D]] = []
+        for trace in surface_tcps_per_trace:
+            kept: list[TCP6D] = []
+            for pt in trace:
+                dx = pt.x - self.model_center[0]
+                dy = pt.y - self.model_center[1]
+                if x_filter * dx < 0:
+                    continue
+                if y_filter * dy < 0:
+                    continue
+                kept.append(pt)
+            print(f"kept: {len(kept)}/{len(trace)}")
+            traces.append(kept)
+        self.surface_tcps_per_trace = traces
 
-    def validate(self):
+    def validate(self) -> float:
         print("\nValidating all trace waypoints...")
         valid_masks, surface_joints, validation_spheres = validate_and_visualize(
-            self.checker, self.robot, self.surface_tcps_per_trace, self.home,
+            self.checker,
+            self.robot,
+            self.surface_tcps_per_trace,
+            self.home,
         )
         clear_bodies(self.checker.cid, validation_spheres)
-        
+
         flat_mask: list[bool] = sum(valid_masks, [])
         valid_ratio: np.floating = np.mean(np.array(flat_mask, dtype=np.uint8))
         print(f"Valid ratio: {valid_ratio:%}")
-    
+        return float(valid_ratio)
+
     def clean(self):
         if pb.isConnected(self.checker.cid):
             pb.disconnect(self.checker.cid)
@@ -92,7 +134,31 @@ class SupportPlacer:
 
 def main():
     placer = SupportPlacer()
-    placer.run()
+
+    positions: list[tuple[float, tuple[float, float, float], int, int]] = [
+        (270.0, (0.40, -0.35, 0.155), -1, 0)
+    ]
+    results_path: str = "support_placement_results.json"
+
+    for angle, pos, x_filter, y_filter in tqdm.tqdm(positions, desc="Positions"):
+        ratio: float = placer.run(angle, pos, x_filter, y_filter)
+
+        results = []
+        if os.path.exists(results_path):
+            with open(results_path, "r") as f:
+                results = json.load(f)
+
+        results.append(
+            {
+                "angle": angle,
+                "pos": pos,
+                "filter": {"x": x_filter, "y": y_filter},
+                "ratio": ratio,
+            }
+        )
+        with open(results_path, "w") as f:
+            json.dump(results, f, indent=4)
+
 
 if __name__ == "__main__":
     main()

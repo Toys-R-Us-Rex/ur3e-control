@@ -90,6 +90,7 @@ def validate_and_visualize(checker, robot, surface_tcps_per_trace, home):
         ok_count = sum(valid_mask)
         fail_count = n_pts - ok_count
 
+        """
         pb.configureDebugVisualizer(pb.COV_ENABLE_RENDERING, 0, physicsClientId=cid)
         for i, (wp, ok, reason) in enumerate(zip(surface_pts, valid_mask, reasons)):
             pos_wp = wp.toList()[:3]
@@ -100,6 +101,7 @@ def validate_and_visualize(checker, robot, surface_tcps_per_trace, home):
                 print(f"\n    pt {i} SKIP ({reason})", end="", flush=True)
             sphere_ids.append(bid)
         pb.configureDebugVisualizer(pb.COV_ENABLE_RENDERING, 1, physicsClientId=cid)
+        """
 
         print(f"\n    => {ok_count} OK, {fail_count} skipped")
 
