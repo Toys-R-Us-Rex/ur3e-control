@@ -34,6 +34,7 @@ dependencies = [
     "rtree>=1.4.1",
     "pyb-utils>=2.4.2",
     "pybullet>=3.2.7",
+    "pybullet-planning>=0.6.1",
 ]
 
 [tool.uv]
