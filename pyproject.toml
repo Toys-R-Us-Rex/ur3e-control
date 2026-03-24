@@ -27,7 +27,6 @@ dependencies = [
     "opencv-python>=4.11.0.86,<5",
     "setuptools==59.6.0",
     "matplotlib>=3.8,<4",
-    "trimesh>=4.0,<5",
     "rtree>=1.0,<2",
     "urbasic",
     "trimesh>=4.11.2",
@@ -35,6 +34,8 @@ dependencies = [
     "pyb-utils>=2.4.2",
     "pybullet>=3.2.7",
     "pybullet-planning>=0.6.1",
+    "pyglet<2",
+    "tqdm>=4.67.3",
 ]
 
 [tool.uv]
