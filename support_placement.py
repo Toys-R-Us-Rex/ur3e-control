@@ -1,6 +1,7 @@
 import json
 import os
 import random
+from multiprocessing import Lock, Pool
 
 import numpy as np
 import pybullet as pb
@@ -19,6 +20,8 @@ from urbasic.URBasic.waypoint6d import TCP6D, Joint6D
 JUMP_TO_VIS = False
 VIS_DELAY = 0.1
 DEBUG = False
+N_WORKERS = 4
+RESULTS_PATH = "support_placement_results.json"
 
 
 class SupportPlacer:
@@ -77,7 +80,7 @@ class SupportPlacer:
                 obs["orientation"] = self.pb_quat
 
     def setup_pybullet(self):
-        self.checker = setup_checker(OBSTACLE_STLS, gui=True)
+        self.checker = setup_checker(OBSTACLE_STLS, gui=False)
 
         # to modify the rotation central point on the GUI
         pb.resetDebugVisualizerCamera(
@@ -137,6 +140,16 @@ class SupportPlacer:
 Placement = tuple[float, tuple[float, float, float], int, int]
 
 
+placer: SupportPlacer = None
+io_lock = None
+
+
+def init_process(io_lock_):
+    global placer, io_lock
+    placer = SupportPlacer()
+    io_lock = io_lock_
+
+
 def generate_placements(
     min_radius: float,
     max_radius: float,
@@ -168,31 +181,21 @@ def generate_placements(
     return placements
 
 
-def main():
-    placer = SupportPlacer()
+def try_placement(placement: Placement):
+    angle, pos, x_filter, y_filter = placement
+    if DEBUG:
+        print("#" * 28)
+        print(f"# Filters: x={x_filter:2d} y={y_filter:2d}       #")
+        print(f"# Angle: {angle:3.0f}               #")
+        print(f"# Pos: ({pos[0]:5.2f},{pos[1]:5.2f},{pos[2]:5.2f}) #")
+        print("#" * 28)
+    ratio: float = placer.run(angle, pos, x_filter, y_filter)
 
-    placements: list[Placement] = generate_placements(
-        min_radius=0.20,
-        max_radius=0.60,
-        min_angle=-np.pi,
-        max_angle=0,
-        z=0.155,
-        count=4,
-    )
-    results_path: str = "support_placement_results.json"
-
-    for angle, pos, x_filter, y_filter in tqdm.tqdm(placements, desc="Placements"):
-        if DEBUG:
-            print("#" * 28)
-            print(f"# Filters: x={x_filter:2d} y={y_filter:2d}       #")
-            print(f"# Angle: {angle:3.0f}               #")
-            print(f"# Pos: ({pos[0]:5.2f},{pos[1]:5.2f},{pos[2]:5.2f}) #")
-            print("#" * 28)
-        ratio: float = placer.run(angle, pos, x_filter, y_filter)
-
+    io_lock.acquire()
+    try:
         results = []
-        if os.path.exists(results_path):
-            with open(results_path, "r") as f:
+        if os.path.exists(RESULTS_PATH):
+            with open(RESULTS_PATH, "r") as f:
                 results = json.load(f)
 
         results.append(
@@ -203,8 +206,26 @@ def main():
                 "ratio": ratio,
             }
         )
-        with open(results_path, "w") as f:
+        with open(RESULTS_PATH, "w") as f:
             json.dump(results, f, indent=4)
+    finally:
+        io_lock.release()
+
+
+def main():
+    placements: list[Placement] = generate_placements(
+        min_radius=0.20,
+        max_radius=0.60,
+        min_angle=-np.pi,
+        max_angle=0,
+        z=0.155,
+        count=4,
+    )
+
+    io_lock = Lock()
+
+    with Pool(N_WORKERS, initializer=init_process, initargs=(io_lock,)) as pool:
+        pool.map(try_placement, placements)
 
 
 if __name__ == "__main__":
