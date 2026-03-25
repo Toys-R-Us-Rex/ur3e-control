@@ -99,7 +99,7 @@ def _validate_surface_points(checker, robot, surface_tcps, qnear=None):
 
     for tcp in tqdm.tqdm(surface_tcps, unit="pt", leave=False):
         ok, q, reason, _ = checker.validate_tcp(
-            robot, tcp, qnear=qnear, check_obstacle=False,
+            robot, tcp, qnear=qnear, check_obstacle=True,
             orientation_search=True, check_joint_jump=False,
         )
         valid_checklist.append(ok)
