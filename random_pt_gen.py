@@ -5,7 +5,8 @@ import numpy as np
 import trimesh
 import trimesh.sample
 
-SHOW = False
+SHOW = True
+SAVE = False
 
 
 def discard_bottom(pts: np.ndarray, face_idx: np.ndarray):
@@ -27,8 +28,9 @@ def main():
 
     data = {"traces": [{"color": 0, "path": list(pairs)}]}
 
-    with open("duckify_simulation/paths/random.json", "w") as f:
-        json.dump(data, f)
+    if SAVE:
+        with open("duckify_simulation/paths/random.json", "w") as f:
+            json.dump(data, f)
 
 
 if __name__ == "__main__":
