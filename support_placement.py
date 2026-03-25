@@ -5,7 +5,6 @@ from multiprocessing import Lock, Pool
 
 import numpy as np
 import pybullet as pb
-import tqdm
 import trimesh
 
 from duckify_simulation.duckify_sim.robot_control import SimRobotControl
@@ -155,17 +154,20 @@ def generate_placements(
     max_radius: float,
     min_angle: float,
     max_angle: float,
-    z: float,
+    min_z: float,
+    max_z: float,
     count: int,
 ) -> list[Placement]:
     placements: list[Placement] = []
     radius_range: float = max_radius - min_radius
     angle_range: float = max_angle - min_angle
+    z_range: float = max_z - min_z
     for _ in range(count):
         radius: float = random.random() * radius_range + min_radius
         angle: float = random.random() * angle_range + min_angle
         x: float = np.cos(angle) * radius
         y: float = np.sin(angle) * radius
+        z: float = random.random() * z_range + min_z
 
         for r in range(4):
             rot_angle: float = r * 90.0
@@ -218,7 +220,8 @@ def main():
         max_radius=0.60,
         min_angle=-np.pi,
         max_angle=0,
-        z=0.155,
+        min_z=0.155,
+        max_z=0.255,
         count=4,
     )
 
