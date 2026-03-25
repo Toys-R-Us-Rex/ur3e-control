@@ -83,6 +83,7 @@ OBSTACLE_STLS = [
     {
         'path': 'duckify_simulation/3d_objects/duck_uv.stl',
         'scale': [0.001, 0.001, 0.001],
+        'should_move': True
     },
     {
         'path': 'duckify_simulation/3d_objects/workspace.stl',
@@ -94,6 +95,7 @@ OBSTACLE_STLS = [
     {
         'path': 'duckify_simulation/3d_objects/support_duck_simulation.stl',
         'scale': [0.001, 0.001, 0.001],
+        'should_move': True
     },
 ]
 

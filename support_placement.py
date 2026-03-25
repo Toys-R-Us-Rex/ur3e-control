@@ -77,7 +77,7 @@ class SupportPlacer:
         )
         self.pb_pos, self.pb_quat, self.pb_scale = extract_pybullet_pose(self.obj2robot)
         for obs in OBSTACLE_STLS:
-            if "position" not in obs:
+            if obs.get("should_move", False):
                 obs["position"] = self.pb_pos
                 obs["orientation"] = self.pb_quat
 
