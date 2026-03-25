@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import random
@@ -20,7 +21,7 @@ JUMP_TO_VIS = False
 VIS_DELAY = 0.1
 DEBUG = False
 N_WORKERS = 4
-RESULTS_PATH = "support_placement_results.json"
+RESULTS_PATH = "results.json"
 
 
 class SupportPlacer:
@@ -46,15 +47,17 @@ class SupportPlacer:
         translation: tuple[float, float, float],
         x_filter: int = 0,
         y_filter: int = 0,
-    ) -> float:
+    ) -> tuple[float, bytes, list[int]]:
         self.setup_robot()
         self.setup_workspace(support_angle, translation)
         self.setup_pybullet()
         self.load_model()
         self.load_trace(x_filter, y_filter)
-        ratio: float = self.validate()
+        ratio: float
+        mask: bytes
+        ratio, mask = self.validate()
         self.clean()
-        return ratio
+        return ratio, mask, self.indices
 
     def load_model(self):
         self.model = trimesh.load_mesh(self.model_path)
@@ -101,9 +104,12 @@ class SupportPlacer:
         print(f"Loaded {len(self.traces)} traces, transformed to TCP6D")
         # preview_traces(self.checker, self.surface_tcps_per_trace)
         traces: list[list[TCP6D]] = []
+        i = 0
+        self.indices = []
         for trace in surface_tcps_per_trace:
             kept: list[TCP6D] = []
             for pt in trace:
+                i += 1
                 dx = pt.x - self.model_center[0]
                 dy = pt.y - self.model_center[1]
                 if x_filter * dx < 0:
@@ -111,11 +117,12 @@ class SupportPlacer:
                 if y_filter * dy < 0:
                     continue
                 kept.append(pt)
+                self.indices.append(i)
             print(f"kept: {len(kept)}/{len(trace)}")
             traces.append(kept)
         self.surface_tcps_per_trace = traces
 
-    def validate(self) -> float:
+    def validate(self) -> tuple[float, bytes]:
         print("\nValidating all trace waypoints...")
         valid_masks, surface_joints, validation_spheres = validate_and_visualize(
             self.checker,
@@ -128,12 +135,16 @@ class SupportPlacer:
         flat_mask: list[bool] = sum(valid_masks, [])
         valid_ratio: np.floating = np.mean(np.array(flat_mask, dtype=np.uint8))
         print(f"Valid ratio: {valid_ratio:%}")
-        return float(valid_ratio)
+        return float(valid_ratio), self.pack_mask(flat_mask)
 
     def clean(self):
         if pb.isConnected(self.checker.cid):
             pb.disconnect(self.checker.cid)
             print("PyBullet disconnected")
+
+    def pack_mask(self, mask: list[bool]) -> bytes:
+        a: np.ndarray = np.packbits(mask)  # type: ignore
+        return a.tobytes()
 
 
 Placement = tuple[float, tuple[float, float, float], int, int]
@@ -191,7 +202,10 @@ def try_placement(placement: Placement):
         print(f"# Angle: {angle:3.0f}               #")
         print(f"# Pos: ({pos[0]:5.2f},{pos[1]:5.2f},{pos[2]:5.2f}) #")
         print("#" * 28)
-    ratio: float = placer.run(angle, pos, x_filter, y_filter)
+    ratio: float
+    mask: bytes
+    indices: list[int]
+    ratio, mask, indices = placer.run(angle, pos, x_filter, y_filter)
 
     io_lock.acquire()
     try:
@@ -206,10 +220,12 @@ def try_placement(placement: Placement):
                 "pos": pos,
                 "filter": {"x": x_filter, "y": y_filter},
                 "ratio": ratio,
+                "mask": base64.b64encode(mask).decode("utf-8"),
+                "indices": indices,
             }
         )
         with open(RESULTS_PATH, "w") as f:
-            json.dump(results, f, indent=4)
+            json.dump(results, f)
     finally:
         io_lock.release()
 
