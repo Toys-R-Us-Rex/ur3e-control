@@ -81,7 +81,7 @@ OBJ2ROBOT_SCALE        = 0.001          # mm → meters
 # Scene for pybullet collision testing
 OBSTACLE_STLS = [
     {
-        'path': 'duckify_simulation/3d_objects/duck_uv.stl',
+        'path': 'duckify_simulation/3d_objects/duck_uv_low_poly.stl',
         'scale': [0.001, 0.001, 0.001],
         'should_move': True
     },

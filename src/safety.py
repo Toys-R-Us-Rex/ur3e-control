@@ -151,7 +151,7 @@ class CollisionChecker:
     # returns a new tcp valid if one has been found
     def validate_tcp(self, robot, tcp, qnear=None, margin=COLLISION_MARGIN,
                      check_obstacle=True, orientation_search=False,
-                     max_cone_angle=math.radians(DRAWING_ANGLE), cone_step=math.radians(5),
+                     max_cone_angle=math.radians(DRAWING_ANGLE), cone_step=math.radians(15),
                      check_joint_jump=True):
         ok, reason = self.check_workspace_bounds(tcp)
         if not ok:
