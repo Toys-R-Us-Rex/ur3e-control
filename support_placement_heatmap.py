@@ -8,7 +8,7 @@ import numpy as np
 import seaborn as sns
 
 def main():
-    results_path: str = "/tmp/results_with_z2.json"
+    results_path: str = "/tmp/results3_.json"
     length: float = 1.1
     width: float = 0.7
     min_radius: float = 0.20
@@ -65,16 +65,31 @@ def main():
     
     #######
     axis_pairs = [("x", "y"), ("x", "z"), ("y", "z")]
-    n_bins = 20
+    n_bins = 80
 
     df_binned = base_df.copy()
+    bin_labels = {}
     for col in ["x", "y", "z"]:
-        df_binned[col] = pd.cut(base_df[col], bins=n_bins, labels=False)
+        df_binned[col], bins = pd.cut(base_df[col], bins=n_bins, labels=False, retbins=True)
+        midpoints = (bins[:-1] + bins[1:]) / 2
+        bin_labels[col] = [f"{m:.2f}" for m in midpoints]
 
+    every_n = 8
     for col_a, col_b in axis_pairs:
         pivot = df_binned.pivot_table(values="ratio", index=col_b, columns=col_a, aggfunc="mean")
         fig, ax = plt.subplots(figsize=(6, 5))
-        sns.heatmap(pivot, cmap="viridis", vmin=0, vmax=1, ax=ax)
+        x_labels = [l if i % every_n == 0 else "" for i, l in enumerate(bin_labels[col_a])]
+        y_labels = [l if i % every_n == 0 else "" for i, l in enumerate(bin_labels[col_b])]
+        sns.heatmap(
+            pivot,
+            cmap="viridis",
+            vmin=0, vmax=1,
+            ax=ax,
+            square=True,
+            xticklabels=x_labels, yticklabels=y_labels
+        )
+        ax.tick_params(axis="x", rotation=45)
+        ax.tick_params(axis="y", rotation=0)
         ax.set_title(f"Mean ratio over {col_a.upper()}/{col_b.upper()}")
         plt.tight_layout()
         plt.show()

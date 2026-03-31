@@ -8,7 +8,7 @@ import trimesh
 import numpy as np
 
 
-RESULTS_PATH = "/tmp/results_with_z.json"
+RESULTS_PATH = "/tmp/results3_.json"
 
 
 def main():
@@ -25,13 +25,14 @@ def main():
     valid_counts = np.zeros(len(pts))
     
     for result in results:
-        counts[result["indices"]] += 1
+        indices = np.array(result["indices"]) - 1
+        counts[indices] += 1
         mask = result["mask"].encode("utf-8")
         mask = base64.b64decode(mask)
         mask = np.array(list(mask), dtype=np.uint8)
         mask = np.unpackbits(mask)
-        mask = mask[:len(result["indices"])]
-        valid_counts[result["indices"]] += mask
+        mask = mask[:len(indices)]
+        valid_counts[indices] += mask
     
     print(counts)
     print(valid_counts)
@@ -44,6 +45,8 @@ def main():
     norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
     scalar_map = cm.ScalarMappable(norm=norm, cmap=cmap)
     colors = scalar_map.to_rgba(ratios)
+    colors[valid_counts == 0] = (255, 0, 0, 255)
+    colors[counts == 0] = (0, 0, 0, 0)
     #color = np.clip(ratios * 255, 0, 255).astype(np.uint8)
     #print(np.unique(color, return_counts=True))
     #colors = np.vstack([
